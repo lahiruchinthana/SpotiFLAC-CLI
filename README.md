@@ -1,8 +1,8 @@
 # SpotiFLAC-CLI
 
-[![GitHub Release](https://img.shields.io/github/v/release/YOUR_USERNAME/SpotiFLAC-CLI?style=for-the-badge)](https://github.com/YOUR_USERNAME/SpotiFLAC-CLI/releases)
-[![Downloads](https://img.shields.io/github/downloads/YOUR_USERNAME/SpotiFLAC-CLI/total?style=for-the-badge)](https://github.com/YOUR_USERNAME/SpotiFLAC-CLI/releases)
-[![License](https://img.shields.io/github/license/YOUR_USERNAME/SpotiFLAC-CLI?style=for-the-badge)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/lahiruchinthana/SpotiFLAC-CLI?style=for-the-badge)](https://github.com/lahiruchinthana/SpotiFLAC-CLI/releases)
+[![Downloads](https://img.shields.io/github/downloads/lahiruchinthana/SpotiFLAC-CLI/total?style=for-the-badge)](https://github.com/lahiruchinthana/SpotiFLAC-CLI/releases)
+[![License](https://img.shields.io/github/license/lahiruchinthana/SpotiFLAC-CLI?style=for-the-badge)](LICENSE)
 
 **Command-line tool to download Spotify tracks in lossless FLAC format from Tidal, Qobuz & Amazon Music — no account required.**
 
@@ -44,13 +44,13 @@ Download the latest release for your platform:
 
 ```bash
 # Intel Macs
-curl -LO https://github.com/YOUR_USERNAME/SpotiFLAC-CLI/releases/latest/download/spotiflac-darwin-amd64.tar.gz
+curl -LO https://github.com/lahiruchinthana/SpotiFLAC-CLI/releases/latest/download/spotiflac-darwin-amd64.tar.gz
 tar -xzf spotiflac-darwin-amd64.tar.gz
 chmod +x spotiflac
 sudo mv spotiflac /usr/local/bin/
 
 # Apple Silicon (M1/M2/M3/M4)
-curl -LO https://github.com/YOUR_USERNAME/SpotiFLAC-CLI/releases/latest/download/spotiflac-darwin-arm64.tar.gz
+curl -LO https://github.com/lahiruchinthana/SpotiFLAC-CLI/releases/latest/download/spotiflac-darwin-arm64.tar.gz
 tar -xzf spotiflac-darwin-arm64.tar.gz
 chmod +x spotiflac
 sudo mv spotiflac /usr/local/bin/
@@ -60,13 +60,13 @@ sudo mv spotiflac /usr/local/bin/
 
 ```bash
 # AMD64 (x86-64)
-wget https://github.com/YOUR_USERNAME/SpotiFLAC-CLI/releases/latest/download/spotiflac-linux-amd64.tar.gz
+wget https://github.com/lahiruchinthana/SpotiFLAC-CLI/releases/latest/download/spotiflac-linux-amd64.tar.gz
 tar -xzf spotiflac-linux-amd64.tar.gz
 chmod +x spotiflac
 sudo mv spotiflac /usr/local/bin/
 
 # ARM64 (Oracle Ampere A1, Raspberry Pi 4/5)
-wget https://github.com/YOUR_USERNAME/SpotiFLAC-CLI/releases/latest/download/spotiflac-linux-arm64.tar.gz
+wget https://github.com/lahiruchinthana/SpotiFLAC-CLI/releases/latest/download/spotiflac-linux-arm64.tar.gz
 tar -xzf spotiflac-linux-arm64.tar.gz
 chmod +x spotiflac
 sudo mv spotiflac /usr/local/bin/
@@ -75,12 +75,12 @@ sudo mv spotiflac /usr/local/bin/
 ### Build from Source
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/SpotiFLAC-CLI.git
+git clone https://github.com/lahiruchinthana/SpotiFLAC-CLI.git
 cd SpotiFLAC-CLI
 go build -ldflags="-s -w" -o spotiflac main_cli.go
 ```
 
-**[→ See REQUIREMENTS.md for build dependencies](REQUIREMENTS.md)**
+**Requirements:** Go 1.21+ ([see full build requirements](REQUIREMENTS.md))
 
 ---
 
@@ -382,11 +382,10 @@ This project inherits its license from the original [SpotiFLAC](https://github.c
 
 ---
 
-## 🛠️ Development
+## � Links
 
-See [RELEASE_GUIDE.md](RELEASE_GUIDE.md) for build and release instructions.
-
-**[→ Build Requirements](REQUIREMENTS.md)** | **[→ Release Guide](RELEASE_GUIDE.md)** | **[→ Changelog](CHANGELOG.md)**
+- **[Changelog](CHANGELOG.md)** - Version history and release notes
+- **[Build from Source](REQUIREMENTS.md)** - Requirements for building from source
 
 ---
 
