@@ -9,7 +9,7 @@ echo "========================================="
 echo ""
 
 # Set version
-VERSION="7.0.7"
+VERSION="1.1.0"
 
 # Colors for output
 GREEN='\033[0;32m'

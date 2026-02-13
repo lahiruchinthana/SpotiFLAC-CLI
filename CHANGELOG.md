@@ -7,6 +7,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-02-13
+
+### ✨ Added - MP3 Format Support
+
+SpotiFLAC-CLI now supports automatic conversion to MP3 format after downloading lossless FLAC files!
+
+#### New Features
+
+- **MP3 conversion** - Convert downloaded FLAC to MP3 automatically with `--output-format mp3`
+- **Configurable bitrate** - Set MP3 bitrate with `--mp3-bitrate` (128k, 192k, 256k, 320k)
+- **M4A support** - Also supports M4A format conversion with `--output-format m4a`
+- **Automatic metadata** - All metadata (tags, cover art, lyrics) preserved during conversion
+- **Clean workflow** - Original FLAC file automatically removed after successful conversion
+
+#### New Command-Line Options
+
+```bash
+--output-format <format>   Output format: flac (default), mp3, m4a
+--mp3-bitrate <bitrate>    MP3 bitrate (default: 320k)
+                          Options: 128k, 192k, 256k, 320k
+```
+
+#### Quick Examples
+
+```bash
+# Download as MP3 320kbps (highest quality)
+spotiflac <URL> --auto --output-format mp3
+
+# Download as MP3 256kbps
+spotiflac <URL> --auto --output-format mp3 --mp3-bitrate 256k
+
+# Download album as MP3
+spotiflac <ALBUM_URL> --auto --output-format mp3
+```
+
+#### Technical Details
+
+- Uses FFmpeg with libmp3lame encoder
+- ID3v2.3 tags for maximum compatibility
+- Preserves all metadata: title, artist, album, year, track numbers, ISRC, lyrics, cover art
+- Organized output: MP3 files saved in `MP3/` subdirectory
+
+---
+
+## [1.1.0] - 2026-02-13
+
+### 🔄 Updated to align with SpotiFLAC v7.0.9
+
+This release brings SpotiFLAC-CLI up to date with the main SpotiFLAC repository (v7.0.7 → v7.0.9), incorporating critical bug fixes and new features.
+
+### 🐛 Fixed
+
+- **Fixed missing artist and publisher metadata** - Albums now properly include publisher/label information (#473)
+- **Fixed lyric embedding failures** - Lyrics now embed correctly into FLAC files
+- **Fixed Qobuz API endpoint** - Updated to new Jumo API endpoint with proper headers
+- **Fixed Amazon Music API** - Updated to new API structure with decryption support
+- **Fixed incorrect disc numbers** - Multi-disc albums now show correct disc numbers in artist discography
+- **Fixed ISRC metadata** - ISRC codes are now properly embedded (was incorrectly using Spotify track IDs)
+
+### ✨ Added
+
+- **ISRC metadata embedding** - Proper ISRC codes now embedded in downloaded tracks for better identification (#472)
+- **Amazon Music decryption support** - Automatic FFmpeg decryption for DRM-protected Amazon streams
+- **Codec detection** - Automatic detection and handling of FLAC/M4A codecs from Amazon Music
+- **User-Agent headers** - Added proper headers for improved API compatibility
+- **Enhanced error handling** - Better error messages for API failures
+
+### 🔧 Changed
+
+- Updated Qobuz API from `/file` to `/get` endpoint
+- Improved Amazon Music download flow with decryption pipeline
+- Enhanced metadata embedding with ISRC field
+- Better disc information handling for multi-disc albums
+
+### 📦 Backend Changes (from SpotiFLAC v7.0.8 & v7.0.9)
+
+- Qobuz and Amazon Music API fixes
+- Metadata tagging failure fixes
+- Year issues in lyrics and cover metadata resolved
+- Automatic ffmpeg detection improvements
+- SpotFetch API fallback suggestions
+
+---
+
 ## [1.0.0] - 2026-02-01
 
 ### 🎉 Initial Release

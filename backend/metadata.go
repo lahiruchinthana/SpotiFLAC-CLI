@@ -31,6 +31,7 @@ type Metadata struct {
 	Publisher   string
 	Lyrics      string
 	Description string
+	ISRC        string
 }
 
 func EmbedMetadata(filepath string, metadata Metadata, coverPath string) error {
@@ -84,6 +85,9 @@ func EmbedMetadata(filepath string, metadata Metadata, coverPath string) error {
 	}
 	if metadata.Description != "" {
 		_ = cmt.Add("DESCRIPTION", metadata.Description)
+	}
+	if metadata.ISRC != "" {
+		_ = cmt.Add("ISRC", metadata.ISRC)
 	}
 
 	if metadata.Lyrics != "" {

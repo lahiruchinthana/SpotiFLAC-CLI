@@ -33,7 +33,10 @@ var (
 	verbose              bool
 	dumpJSON             bool
 	writeInfoJSON        bool
-	version              = "1.0.0"
+	// MP3 conversion options
+	outputFormat string
+	mp3Bitrate   string
+	version      = "1.1.0"
 )
 
 var rootCmd = &cobra.Command{
@@ -55,6 +58,10 @@ Services: tidal, qobuz, amazon, auto (tries multiple services)
 }
 
 func init() {
+	// Set custom version template
+	rootCmd.SetVersionTemplate(`SpotiFLAC-CLI version {{.Version}} (CLI Edition)
+`)
+
 	// Output options
 	rootCmd.Flags().StringVarP(&outputDir, "output", "o", ".", "Output directory")
 	rootCmd.Flags().StringVarP(&filenameFormat, "filename-format", "f", "title-artist", "Filename format: title-artist, artist-title, title, or custom template")
@@ -86,6 +93,10 @@ func init() {
 	// Metadata options
 	rootCmd.Flags().BoolVarP(&dumpJSON, "dump-json", "j", false, "Print metadata as JSON and exit (no download)")
 	rootCmd.Flags().BoolVar(&writeInfoJSON, "write-info-json", false, "Write metadata to .info.json file")
+
+	// Format conversion options
+	rootCmd.Flags().StringVar(&outputFormat, "output-format", "flac", "Output format: flac, mp3, m4a")
+	rootCmd.Flags().StringVar(&mp3Bitrate, "mp3-bitrate", "320k", "MP3 bitrate (e.g., 128k, 192k, 256k, 320k)")
 }
 
 func main() {
@@ -123,7 +134,7 @@ func runDownload(cmd *cobra.Command, args []string) {
 	}
 
 	if !dumpJSON {
-		logInfo("SpotiFLAC v%s - Starting download...", version)
+		logInfo("SpotiFLAC-CLI v%s - Starting download...", version)
 		logInfo("URL: %s", spotifyURL)
 	}
 
@@ -169,7 +180,7 @@ func runDownload(cmd *cobra.Command, args []string) {
 			"album_artist": data.Track.AlbumArtist,
 			"release_date": data.Track.ReleaseDate,
 			"images":       data.Track.Images,
-			"isrc":         data.Track.ISRC,
+
 			"duration_ms":  float64(data.Track.DurationMS),
 			"track_number": float64(data.Track.TrackNumber),
 			"disc_number":  float64(data.Track.DiscNumber),
@@ -193,7 +204,7 @@ func runDownload(cmd *cobra.Command, args []string) {
 				"album_artist": t.AlbumArtist,
 				"release_date": t.ReleaseDate,
 				"images":       t.Images,
-				"isrc":         t.ISRC,
+
 				"track_number": float64(t.TrackNumber),
 				"disc_number":  float64(t.DiscNumber),
 				"total_tracks": float64(t.TotalTracks),
@@ -215,7 +226,6 @@ func runDownload(cmd *cobra.Command, args []string) {
 				"album_artist": t.AlbumArtist,
 				"release_date": t.ReleaseDate,
 				"images":       t.Images,
-				"isrc":         t.ISRC,
 				"track_number": float64(t.TrackNumber),
 				"disc_number":  float64(t.DiscNumber),
 				"total_tracks": float64(t.TotalTracks),
@@ -237,7 +247,6 @@ func runDownload(cmd *cobra.Command, args []string) {
 				"album_artist": t.AlbumArtist,
 				"release_date": t.ReleaseDate,
 				"images":       t.Images,
-				"isrc":         t.ISRC,
 				"track_number": float64(t.TrackNumber),
 				"disc_number":  float64(t.DiscNumber),
 				"total_tracks": float64(t.TotalTracks),
@@ -327,6 +336,7 @@ func printMetadataJSONWithLinks(metadata interface{}, spotifyURL string) {
 
 	output["spotiflac_cli"] = map[string]interface{}{
 		"version": version,
+		"note":    "SpotiFLAC-CLI (Command-Line Edition)",
 		"usage": map[string]string{
 			"tidal":  fmt.Sprintf("spotiflac %s --service tidal --quality LOSSLESS", spotifyURL),
 			"amazon": fmt.Sprintf("spotiflac %s --service amazon", spotifyURL),
@@ -430,7 +440,57 @@ func downloadTrack(trackData map[string]interface{}) {
 		logWarning("File already exists: %s", strings.TrimPrefix(filePath, "EXISTS:"))
 	} else {
 		logSuccess("Downloaded: %s", filePath)
+
+		// Convert to requested format if needed
+		if outputFormat != "flac" && !strings.HasPrefix(filePath, "EXISTS:") {
+			logInfo("\nConverting to %s format...", strings.ToUpper(outputFormat))
+			convertedPath, convertErr := convertToFormat(filePath, outputFormat, mp3Bitrate)
+			if convertErr != nil {
+				logError("Conversion failed: %v", convertErr)
+				os.Exit(1)
+			}
+			logSuccess("Converted to: %s", convertedPath)
+
+			// Remove original FLAC file after successful conversion
+			if err := os.Remove(filePath); err != nil {
+				logWarning("Could not remove original FLAC file: %v", err)
+			}
+		}
 	}
+}
+
+func convertToFormat(inputFile, format, bitrate string) (string, error) {
+	format = strings.ToLower(format)
+
+	// Validate format
+	if format != "mp3" && format != "m4a" {
+		return "", fmt.Errorf("unsupported output format: %s (supported: mp3, m4a)", format)
+	}
+
+	logInfo("Converting to %s...", strings.ToUpper(format))
+
+	req := backend.ConvertAudioRequest{
+		InputFiles:   []string{inputFile},
+		OutputFormat: format,
+		Bitrate:      bitrate,
+		Codec:        "", // Use default codec
+	}
+
+	results, err := backend.ConvertAudio(req)
+	if err != nil {
+		return "", fmt.Errorf("conversion failed: %w", err)
+	}
+
+	if len(results) == 0 {
+		return "", fmt.Errorf("no conversion results")
+	}
+
+	result := results[0]
+	if !result.Success {
+		return "", fmt.Errorf("conversion failed: %s", result.Error)
+	}
+
+	return result.OutputFile, nil
 }
 
 func downloadBatch(trackList []interface{}, contentType string) {
@@ -485,6 +545,20 @@ func downloadBatch(trackList []interface{}, contentType string) {
 		} else {
 			logSuccess("Downloaded: %s - %s", artistName, trackName)
 			succeeded++
+
+			// Convert to MP3 if requested
+			if outputFormat != "flac" && outputFormat != "" && !strings.HasPrefix(filePath, "EXISTS:") {
+				convertedPath, convertErr := convertToFormat(filePath, outputFormat, mp3Bitrate)
+				if convertErr != nil {
+					logWarning("Failed to convert to %s: %v", outputFormat, convertErr)
+				} else {
+					logSuccess("Converted to %s: %s", strings.ToUpper(outputFormat), filepath.Base(convertedPath))
+					// Remove original FLAC file after successful conversion
+					if err := os.Remove(filePath); err != nil {
+						logDebug("Warning: Failed to remove original file: %v", err)
+					}
+				}
+			}
 		}
 
 		// Delay between downloads
@@ -534,7 +608,7 @@ func downloadWithAutoFallback(spotifyID, isrc, trackName, artistName, albumName,
 					embedMaxQualityCover, trackNumber, discNumber, totalTracks,
 					totalDiscs, copyright, publisher,
 					fmt.Sprintf("https://open.spotify.com/track/%s", spotifyID),
-					allowFallback,
+					false, allowFallback,
 				)
 				if err == nil {
 					return filePath, nil
@@ -554,6 +628,7 @@ func downloadWithAutoFallback(spotifyID, isrc, trackName, artistName, albumName,
 					trackNumber, discNumber, totalTracks, embedMaxQualityCover,
 					totalDiscs, copyright, publisher,
 					fmt.Sprintf("https://open.spotify.com/track/%s", spotifyID),
+					false, // useFirstArtistOnly
 				)
 				if err == nil {
 					return filePath, nil
@@ -607,7 +682,7 @@ func downloadWithService(svc, spotifyID, isrc, trackName, artistName, albumName,
 			includeTrackNumber, trackNumber, trackName, artistName,
 			albumName, albumArtist, releaseDate, true, coverURL,
 			embedMaxQualityCover, trackNumber, discNumber, totalTracks,
-			totalDiscs, copyright, publisher, spotifyURL, allowFallback,
+			totalDiscs, copyright, publisher, spotifyURL, false, allowFallback,
 		)
 
 	case "qobuz":
@@ -640,6 +715,7 @@ func downloadWithService(svc, spotifyID, isrc, trackName, artistName, albumName,
 			artistName, albumName, albumArtist, releaseDate, coverURL,
 			trackNumber, discNumber, totalTracks, embedMaxQualityCover,
 			totalDiscs, copyright, publisher, spotifyURL,
+			false, // useFirstArtistOnly
 		)
 
 	default:
