@@ -94,6 +94,9 @@ temp/
 # Test files
 test
 
+# Build scripts (internal development use only)
+scripts/
+
 # Build notes (optional - uncomment if you don't want to commit)
 # BUILD_NOTES.md
 push.bat

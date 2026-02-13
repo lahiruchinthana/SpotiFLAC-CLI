@@ -10,7 +10,7 @@ echo =========================================
 echo.
 
 REM Set version
-set VERSION=7.0.7
+set VERSION=1.1.0
 
 REM Clean build directory
 echo Cleaning build directory...
