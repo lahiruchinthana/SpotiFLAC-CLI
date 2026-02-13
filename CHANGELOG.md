@@ -49,10 +49,6 @@ spotiflac <ALBUM_URL> --auto --output-format mp3
 - Preserves all metadata: title, artist, album, year, track numbers, ISRC, lyrics, cover art
 - Organized output: MP3 files saved in `MP3/` subdirectory
 
----
-
-## [1.1.0] - 2026-02-13
-
 ### 🔄 Updated to align with SpotiFLAC v7.0.9
 
 This release brings SpotiFLAC-CLI up to date with the main SpotiFLAC repository (v7.0.7 → v7.0.9), incorporating critical bug fixes and new features.
