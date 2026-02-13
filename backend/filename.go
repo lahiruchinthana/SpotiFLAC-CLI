@@ -158,3 +158,16 @@ func sanitizeFolderName(name string) string { return SanitizeFilename(name) }
 func sanitizeFilename(name string) string {
 	return SanitizeFilename(name)
 }
+
+func GetFirstArtist(artistString string) string {
+	if artistString == "" {
+		return ""
+	}
+	delimiters := []string{", ", " & ", " feat. ", " ft. ", " featuring "}
+	for _, d := range delimiters {
+		if idx := strings.Index(strings.ToLower(artistString), d); idx != -1 {
+			return strings.TrimSpace(artistString[:idx])
+		}
+	}
+	return artistString
+}
