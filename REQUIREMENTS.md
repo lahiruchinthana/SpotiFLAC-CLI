@@ -2,6 +2,10 @@
 
 This document outlines system requirements, runtime dependencies, and build requirements for SpotiFLAC-CLI.
 
+> **📦 For End Users:** Pre-built binaries are available for all supported platforms. [Download from GitHub Releases](https://github.com/lahiruchinthana/SpotiFLAC-CLI/releases) - no compilation needed!
+>
+> **⚙️ For Developers:** Continue reading for build requirements and development setup.
+
 ---
 
 ## 🖥️ System Requirements
