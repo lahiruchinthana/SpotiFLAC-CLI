@@ -166,6 +166,9 @@ func (a *AmazonDownloader) DownloadFromAfkarXYZ(amazonURL, outputDir, quality st
 
 	fmt.Printf("Downloading track: %s\n", fileName)
 	pw := NewProgressWriter(out)
+	if dlResp.ContentLength > 0 {
+		pw.SetTotalSize(dlResp.ContentLength)
+	}
 	_, err = io.Copy(pw, dlResp.Body)
 	if err != nil {
 		out.Close()
@@ -173,7 +176,7 @@ func (a *AmazonDownloader) DownloadFromAfkarXYZ(amazonURL, outputDir, quality st
 		return "", err
 	}
 
-	fmt.Printf("\rDownloaded: %.2f MB (Complete)\n", float64(pw.GetTotal())/(1024*1024))
+	fmt.Printf("\rDownloaded: %.2f MB (Complete)          \n", float64(pw.GetTotal())/(1024*1024))
 
 	if apiResp.DecryptionKey != "" {
 		fmt.Printf("Decrypting file...\n")
