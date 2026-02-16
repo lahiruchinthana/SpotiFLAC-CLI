@@ -452,3 +452,11 @@ func GetDeezerISRC(deezerURL string) (string, error) {
 	fmt.Printf("Found ISRC from Deezer: %s (track: %s)\n", deezerTrack.ISRC, deezerTrack.Title)
 	return deezerTrack.ISRC, nil
 }
+
+func (s *SongLinkClient) GetISRC(spotifyID string) (string, error) {
+	deezerURL, err := s.GetDeezerURLFromSpotify(spotifyID)
+	if err != nil {
+		return "", err
+	}
+	return GetDeezerISRC(deezerURL)
+}

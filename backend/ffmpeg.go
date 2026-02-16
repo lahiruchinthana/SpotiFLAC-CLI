@@ -91,7 +91,17 @@ func GetFFmpegPath() (string, error) {
 		ffmpegName = "ffmpeg.exe"
 	}
 
-	return filepath.Join(ffmpegDir, ffmpegName), nil
+	localPath := filepath.Join(ffmpegDir, ffmpegName)
+	if _, err := os.Stat(localPath); err == nil {
+		return localPath, nil
+	}
+
+	path, err := exec.LookPath(ffmpegName)
+	if err == nil {
+		return path, nil
+	}
+
+	return localPath, nil
 }
 
 func GetFFprobePath() (string, error) {
@@ -105,12 +115,17 @@ func GetFFprobePath() (string, error) {
 		ffprobeName = "ffprobe.exe"
 	}
 
-	ffprobePath := filepath.Join(ffmpegDir, ffprobeName)
-	if _, err := os.Stat(ffprobePath); err == nil {
-		return ffprobePath, nil
+	localPath := filepath.Join(ffmpegDir, ffprobeName)
+	if _, err := os.Stat(localPath); err == nil {
+		return localPath, nil
 	}
 
-	return "", fmt.Errorf("ffprobe not found in app directory")
+	path, err := exec.LookPath(ffprobeName)
+	if err == nil {
+		return path, nil
+	}
+
+	return localPath, fmt.Errorf("ffprobe not found in app directory or system path")
 }
 
 func IsFFprobeInstalled() (bool, error) {
@@ -522,8 +537,8 @@ func ConvertAudio(req ConvertAudioRequest) ([]ConvertAudioResult, error) {
 			baseName := strings.TrimSuffix(filepath.Base(inputFile), inputExt)
 			inputDir := filepath.Dir(inputFile)
 
-			outputFormatUpper := strings.ToUpper(req.OutputFormat)
-			outputDir := filepath.Join(inputDir, outputFormatUpper)
+			// Output to the same directory as input without creating subdirectory
+			outputDir := inputDir
 
 			if err := os.MkdirAll(outputDir, 0755); err != nil {
 				result.Error = fmt.Sprintf("failed to create output directory: %v", err)

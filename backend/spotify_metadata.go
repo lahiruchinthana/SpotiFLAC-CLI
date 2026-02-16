@@ -42,7 +42,6 @@ type TrackMetadata struct {
 	DiscNumber  int    `json:"disc_number,omitempty"`
 	TotalDiscs  int    `json:"total_discs,omitempty"`
 	ExternalURL string `json:"external_urls"`
-	ISRC        string `json:"isrc"`
 	Copyright   string `json:"copyright,omitempty"`
 	Publisher   string `json:"publisher,omitempty"`
 	Plays       string `json:"plays,omitempty"`
@@ -70,7 +69,6 @@ type AlbumTrackMetadata struct {
 	DiscNumber  int            `json:"disc_number,omitempty"`
 	TotalDiscs  int            `json:"total_discs,omitempty"`
 	ExternalURL string         `json:"external_urls"`
-	ISRC        string         `json:"isrc"`
 	AlbumType   string         `json:"album_type,omitempty"`
 	AlbumID     string         `json:"album_id,omitempty"`
 	AlbumURL    string         `json:"album_url,omitempty"`
@@ -858,7 +856,6 @@ func (c *SpotifyMetadataClient) formatTrackData(raw *apiTrackResponse) TrackResp
 		DiscNumber:  raw.Disc,
 		TotalDiscs:  raw.Discs,
 		ExternalURL: externalURL,
-		ISRC:        raw.ID,
 		Copyright:   raw.Copyright,
 		Publisher:   raw.Album.Label,
 		Plays:       raw.Plays,
@@ -917,7 +914,6 @@ func (c *SpotifyMetadataClient) formatAlbumData(raw *apiAlbumResponse) (*AlbumRe
 			DiscNumber:  1,
 			TotalDiscs:  0,
 			ExternalURL: fmt.Sprintf("https://open.spotify.com/track/%s", item.ID),
-			ISRC:        item.ID,
 			AlbumID:     raw.ID,
 			AlbumURL:    fmt.Sprintf("https://open.spotify.com/album/%s", raw.ID),
 			ArtistID:    artistID,
@@ -977,7 +973,6 @@ func (c *SpotifyMetadataClient) formatPlaylistData(raw *apiPlaylistResponse) Pla
 			DiscNumber:  1,
 			TotalDiscs:  0,
 			ExternalURL: fmt.Sprintf("https://open.spotify.com/track/%s", item.ID),
-			ISRC:        item.ID,
 			AlbumID:     item.AlbumID,
 			AlbumURL:    fmt.Sprintf("https://open.spotify.com/album/%s", item.AlbumID),
 			ArtistID:    artistID,
@@ -1096,7 +1091,6 @@ func (c *SpotifyMetadataClient) formatArtistDiscographyData(ctx context.Context,
 					TotalTracks: albumData.Count,
 					DiscNumber:  1,
 					ExternalURL: fmt.Sprintf("https://open.spotify.com/track/%s", tr.ID),
-					ISRC:        tr.ID,
 					AlbumID:     albumID,
 					AlbumURL:    fmt.Sprintf("https://open.spotify.com/album/%s", albumID),
 					ArtistID:    artistID,
