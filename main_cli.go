@@ -33,10 +33,16 @@ var (
 	verbose              bool
 	dumpJSON             bool
 	writeInfoJSON        bool
+	// yt-dlp style options
+	printJSON     bool
+	noWarnings    bool
+	newline       bool
+	showProgress  bool
+	printTemplate string
 	// MP3 conversion options
 	outputFormat string
 	mp3Bitrate   string
-	version      = "1.1.0"
+	version      = "1.1.1"
 )
 
 var rootCmd = &cobra.Command{
@@ -94,6 +100,13 @@ func init() {
 	rootCmd.Flags().BoolVarP(&dumpJSON, "dump-json", "j", false, "Print metadata as JSON and exit (no download)")
 	rootCmd.Flags().BoolVar(&writeInfoJSON, "write-info-json", false, "Write metadata to .info.json file")
 
+	// Additional output options
+	rootCmd.Flags().BoolVar(&printJSON, "print-json", false, "Print metadata as JSON (alias for --dump-json)")
+	rootCmd.Flags().BoolVar(&noWarnings, "no-warnings", false, "Suppress warning messages")
+	rootCmd.Flags().BoolVar(&newline, "newline", false, "Output progress on new lines")
+	rootCmd.Flags().BoolVar(&showProgress, "progress", true, "Show download progress (default: true)")
+	rootCmd.Flags().StringVar(&printTemplate, "print", "", "Print specific field from metadata (e.g., title, artist, url)")
+
 	// Format conversion options
 	rootCmd.Flags().StringVar(&outputFormat, "output-format", "flac", "Output format: flac, mp3, m4a")
 	rootCmd.Flags().StringVar(&mp3Bitrate, "mp3-bitrate", "320k", "MP3 bitrate (e.g., 128k, 192k, 256k, 320k)")
@@ -108,6 +121,14 @@ func main() {
 
 func runDownload(cmd *cobra.Command, args []string) {
 	spotifyURL := args[0]
+
+	// Handle --print-json flag (alias for --dump-json)
+	if printJSON {
+		dumpJSON = true
+	}
+
+	// Set progress display options
+	backend.SetProgressOptions(newline, showProgress)
 
 	if autoDownload {
 		service = "auto"
@@ -133,19 +154,21 @@ func runDownload(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if !dumpJSON {
+	if !dumpJSON && !quiet {
 		logInfo("SpotiFLAC-CLI v%s - Starting download...", version)
 		logInfo("URL: %s", spotifyURL)
 	}
 
 	// Initialize history DB (optional for CLI)
 	if err := backend.InitHistoryDB("SpotiFLAC-CLI"); err != nil {
-		logDebug("Warning: Failed to init history DB: %v", err)
+		if !noWarnings && !quiet {
+			logDebug("Warning: Failed to init history DB: %v", err)
+		}
 	}
 	defer backend.CloseHistoryDB()
 
 	// Fetch Spotify metadata
-	if !dumpJSON {
+	if !dumpJSON && !quiet {
 		logInfo("Fetching metadata from Spotify...")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
@@ -155,6 +178,12 @@ func runDownload(cmd *cobra.Command, args []string) {
 	if err != nil {
 		logError("Failed to fetch metadata: %v", err)
 		os.Exit(1)
+	}
+
+	// Handle --print template mode - print specific field and exit
+	if printTemplate != "" {
+		printSpecificField(metadata, printTemplate)
+		return
 	}
 
 	// Dump JSON mode - print metadata and exit
@@ -351,6 +380,112 @@ func printMetadataJSONWithLinks(metadata interface{}, spotifyURL string) {
 		os.Exit(1)
 	}
 	fmt.Println(string(jsonData))
+}
+
+func printSpecificField(metadata interface{}, field string) {
+	// Extract data based on metadata type
+	var track *backend.TrackMetadata
+	var album *backend.AlbumInfoMetadata
+	var trackList []backend.AlbumTrackMetadata
+
+	switch data := metadata.(type) {
+	case backend.TrackResponse:
+		track = &data.Track
+	case *backend.AlbumResponsePayload:
+		album = &data.AlbumInfo
+		trackList = data.TrackList
+	case *backend.PlaylistResponsePayload:
+		trackList = data.TrackList
+	case *backend.ArtistDiscographyPayload:
+		trackList = data.TrackList
+	}
+
+	// Map common field names
+	switch field {
+	case "title", "name":
+		if track != nil {
+			fmt.Println(track.Name)
+		} else if album != nil {
+			fmt.Println(album.Name)
+		} else if len(trackList) > 0 {
+			fmt.Println(trackList[0].Name)
+		}
+	case "artist", "artists":
+		if track != nil {
+			fmt.Println(track.Artists)
+		} else if len(trackList) > 0 {
+			fmt.Println(trackList[0].Artists)
+		}
+	case "album", "album_name":
+		if track != nil {
+			fmt.Println(track.AlbumName)
+		} else if album != nil {
+			fmt.Println(album.Name)
+		} else if len(trackList) > 0 {
+			fmt.Println(trackList[0].AlbumName)
+		}
+	case "album_artist":
+		if track != nil {
+			fmt.Println(track.AlbumArtist)
+		} else if len(trackList) > 0 {
+			fmt.Println(trackList[0].AlbumArtist)
+		}
+	case "release_date", "date":
+		if track != nil {
+			fmt.Println(track.ReleaseDate)
+		} else if album != nil {
+			fmt.Println(album.ReleaseDate)
+		} else if len(trackList) > 0 {
+			fmt.Println(trackList[0].ReleaseDate)
+		}
+	case "spotify_id", "id":
+		if track != nil {
+			fmt.Println(track.SpotifyID)
+		} else if album != nil {
+			fmt.Println(album.ArtistID)
+		} else if len(trackList) > 0 {
+			fmt.Println(trackList[0].SpotifyID)
+		}
+	case "duration", "duration_ms":
+		if track != nil {
+			fmt.Println(track.DurationMS)
+		} else if len(trackList) > 0 {
+			fmt.Println(trackList[0].DurationMS)
+		}
+	case "track_number":
+		if track != nil {
+			fmt.Println(track.TrackNumber)
+		} else if len(trackList) > 0 {
+			fmt.Println(trackList[0].TrackNumber)
+		}
+	case "url", "spotify_url":
+		if track != nil {
+			fmt.Printf("https://open.spotify.com/track/%s\n", track.SpotifyID)
+		} else if album != nil {
+			// Albums don't have a single ID in AlbumInfoMetadata
+			if len(trackList) > 0 {
+				fmt.Printf("https://open.spotify.com/album/%s\n", trackList[0].AlbumID)
+			}
+		}
+	default:
+		// If no match, try to marshal the whole metadata
+		jsonData, err := json.Marshal(metadata)
+		if err != nil {
+			logError("Unknown field: %s", field)
+			os.Exit(1)
+		}
+
+		// Try to extract field from JSON
+		var result map[string]interface{}
+		if err := json.Unmarshal(jsonData, &result); err == nil {
+			if value, ok := result[field]; ok {
+				fmt.Println(value)
+			} else {
+				logError("Unknown field: %s", field)
+				os.Exit(1)
+			}
+		}
+	}
 }
 
 func writeMetadataJSON(metadata interface{}, spotifyURL string) {
@@ -751,7 +886,7 @@ func logError(format string, args ...interface{}) {
 }
 
 func logWarning(format string, args ...interface{}) {
-	if !quiet {
+	if !quiet && !noWarnings {
 		fmt.Printf("⚠ [WARNING] "+format+"\n", args...)
 	}
 }

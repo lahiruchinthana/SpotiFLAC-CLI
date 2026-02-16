@@ -335,12 +335,15 @@ func (q *QobuzDownloader) DownloadFile(url, filepath string) error {
 	fmt.Println("Downloading...")
 
 	pw := NewProgressWriter(out)
+	if resp.ContentLength > 0 {
+		pw.SetTotalSize(resp.ContentLength)
+	}
 	_, err = io.Copy(pw, resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
-	fmt.Printf("\rDownloaded: %.2f MB (Complete)\n", float64(pw.GetTotal())/(1024*1024))
+	fmt.Printf("\rDownloaded: %.2f MB (Complete)          \n", float64(pw.GetTotal())/(1024*1024))
 	return nil
 }
 
