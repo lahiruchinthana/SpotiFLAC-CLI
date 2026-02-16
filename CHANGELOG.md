@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.1] - 2026-02-14
+
+### ✨ Added - Enhanced Progress Display & Command-Line Options
+
+Enhanced command-line interface with additional options and improved progress display!
+
+#### New Features
+
+- **Enhanced progress display** - Download progress now displays with percentage, speed, and ETA
+  - Format: `[download] 8.8% of 26.19MiB at 2.98MiB/s ETA 00:08`
+  - Real-time speed calculation and accurate time estimates
+- **New command-line flags:**
+  - `--print-json` - Print metadata as JSON (alias for `--dump-json`)
+  - `--no-warnings` - Suppress warning messages
+  - `--newline` - Output progress on new lines instead of overwriting
+  - `--progress` - Show/hide download progress (default: enabled)
+  - `--print <field>` - Print specific metadata field (title, artist, album, url, etc.)
+
+#### New Command-Line Options
+
+```bash
+--print-json              Print metadata as JSON
+--no-warnings            Suppress warning messages
+--newline                Output progress on new lines
+--progress               Show download progress (default: true)
+--print <field>          Print specific field from metadata
+```
+
+#### Quick Examples
+
+```bash
+# Download with progress on new lines
+spotiflac <URL> --auto --newline
+
+# Print only the track title
+spotiflac <URL> --print title
+
+# Print metadata as JSON without downloading
+spotiflac <URL> --print-json
+
+# Download silently (no warnings or progress)
+spotiflac <URL> --auto --no-warnings --progress=false --quiet
+```
+
+### 🐛 Bug Fixes
+
+- **Fixed MP3 subdirectory creation** - MP3 files are now saved in the current directory instead of creating `MP3/` subdirectory
+- **Fixed MP3 conversion for existing files** - Existing FLAC files are now properly converted when using `--output-format mp3`
+- **Improved quiet mode** - Better handling of quiet/verbose flags with new `--no-warnings` option
+
+### 🔧 Technical Details
+
+- Progress display respects `--newline` flag for continuous output
+- `--print` supports common fields: title, name, artist, artists, album, album_name, album_artist, release_date, date, spotify_id, id, duration, duration_ms, track_number, url, spotify_url
+- Progress calculation includes total file size, download speed, and ETA
+- Warning messages can be suppressed independently from info messages
+
+---
+
 ## [1.1.0] - 2026-02-13
 
 ### ✨ Added - MP3 Format Support
