@@ -72,15 +72,9 @@ chmod +x spotiflac
 sudo mv spotiflac /usr/local/bin/
 ```
 
-### Build from Source
-
-```bash
-git clone https://github.com/lahiruchinthana/SpotiFLAC-CLI.git
-cd SpotiFLAC-CLI
-go build -ldflags="-s -w" -o spotiflac main_cli.go
-```
-
-**Requirements:** Go 1.21+ ([see full build requirements](REQUIREMENTS.md))
+> **Note:** Pre-built binaries are provided for all major platforms. See [Releases](https://github.com/lahiruchinthana/SpotiFLAC-CLI/releases) for the latest version.
+>
+> **For Developers:** If you need to build from source, see [REQUIREMENTS.md](REQUIREMENTS.md) for detailed build instructions.
 
 ---
 
@@ -93,11 +87,14 @@ spotiflac https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp
 # Auto mode - tries all services (recommended)
 spotiflac https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp --auto
 
+# Download as MP3 320kbps (NEW in v1.1.0!)
+spotiflac https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp --auto --output-format mp3
+
 # High quality with lyrics and cover art
 spotiflac https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp --auto --auto-quality 24 --embed-lyrics --max-quality-cover
 
-# Download entire album
-spotiflac https://open.spotify.com/album/4a6NzYL1YHRUgx9e3YZI6I --auto -o ./Music
+# Download entire album as MP3
+spotiflac https://open.spotify.com/album/4a6NzYL1YHRUgx9e3YZI6I --auto --output-format mp3 -o ./Music
 
 # Download playlist with delay between tracks
 spotiflac https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M --auto --delay 2.0
@@ -118,18 +115,20 @@ spotiflac [URL] [OPTIONS]
 
 ### Common Options
 
-| Option                | Short | Description                           | Example      |
-| --------------------- | ----- | ------------------------------------- | ------------ |
-| `--auto`              |       | Auto mode - tries multiple services   | `--auto`     |
-| `--service`           | `-s`  | Specific service (tidal/qobuz/amazon) | `-s tidal`   |
-| `--quality`           | `-q`  | Quality setting                       | `-q HI_RES`  |
-| `--output`            | `-o`  | Output directory                      | `-o ./Music` |
-| `--dump-json`         | `-j`  | Print metadata as JSON and exit       | `-j`         |
-| `--embed-lyrics`      | `-l`  | Embed lyrics                          | `-l`         |
-| `--max-quality-cover` | `-c`  | High quality cover art                | `-c`         |
-| `--delay`             | `-d`  | Delay between downloads (seconds)     | `-d 2.0`     |
-| `--verbose`           | `-v`  | Verbose output                        | `-v`         |
-| `--quiet`             |       | Minimal output                        | `--quiet`    |
+| Option                | Short | Description                           | Example               |
+| --------------------- | ----- | ------------------------------------- | --------------------- |
+| `--auto`              |       | Auto mode - tries multiple services   | `--auto`              |
+| `--service`           | `-s`  | Specific service (tidal/qobuz/amazon) | `-s tidal`            |
+| `--quality`           | `-q`  | Quality setting                       | `-q HI_RES`           |
+| `--output`            | `-o`  | Output directory                      | `-o ./Music`          |
+| `--output-format`     |       | Output format (flac/mp3/m4a)          | `--output-format mp3` |
+| `--mp3-bitrate`       |       | MP3 bitrate (128k/192k/256k/320k)     | `--mp3-bitrate 320k`  |
+| `--dump-json`         | `-j`  | Print metadata as JSON and exit       | `-j`                  |
+| `--embed-lyrics`      | `-l`  | Embed lyrics                          | `-l`                  |
+| `--max-quality-cover` | `-c`  | High quality cover art                | `-c`                  |
+| `--delay`             | `-d`  | Delay between downloads (seconds)     | `-d 2.0`              |
+| `--verbose`           | `-v`  | Verbose output                        | `-v`                  |
+| `--quiet`             |       | Minimal output                        | `--quiet`             |
 
 ### Quality Settings
 
@@ -384,8 +383,9 @@ This project inherits its license from the original [SpotiFLAC](https://github.c
 
 ## � Links
 
+- **[Releases](https://github.com/lahiruchinthana/SpotiFLAC-CLI/releases)** - Download pre-built binaries
 - **[Changelog](CHANGELOG.md)** - Version history and release notes
-- **[Build from Source](REQUIREMENTS.md)** - Requirements for building from source
+- **[Developer Documentation](REQUIREMENTS.md)** - Build from source (for developers)
 
 ---
 
