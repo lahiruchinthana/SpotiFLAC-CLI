@@ -77,7 +77,7 @@ func NewQobuzDownloader() *QobuzDownloader {
 	}
 }
 
-func (q *QobuzDownloader) SearchByISRC(isrc string) (*QobuzTrack, error) {
+func (q *QobuzDownloader) searchByISRC(isrc string) (*QobuzTrack, error) {
 	apiBase := "https://www.qobuz.com/api.json/0.2/track/search?query="
 	url := fmt.Sprintf("%s%s&limit=1&app_id=%s", apiBase, isrc, q.appID)
 
@@ -145,10 +145,19 @@ func (q *QobuzDownloader) mapJumoQuality(quality string) int {
 func (q *QobuzDownloader) DownloadFromJumo(trackID int64, quality string) (string, error) {
 	formatID := q.mapJumoQuality(quality)
 	region := "US"
-	url := fmt.Sprintf("https://jumo-dl.pages.dev/file?track_id=%d&format_id=%d&region=%s", trackID, formatID, region)
+	url := fmt.Sprintf("https://jumo-dl.pages.dev/get?track_id=%d&format_id=%d&region=%s", trackID, formatID, region)
 
 	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Get(url)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36")
+	req.Header.Set("Referer", "https://jumo-dl.pages.dev/")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -163,28 +172,19 @@ func (q *QobuzDownloader) DownloadFromJumo(trackID int64, quality string) (strin
 		return "", err
 	}
 
-	var result map[string]interface{}
+	var result struct {
+		URL string `json:"url"`
+	}
 
 	if err := json.Unmarshal(body, &result); err != nil {
-
 		decoded := decodeXOR(body)
 		if err := json.Unmarshal([]byte(decoded), &result); err != nil {
 			return "", fmt.Errorf("failed to parse JSON (plain or XOR): %w", err)
 		}
 	}
 
-	if urlVal, ok := result["url"].(string); ok && urlVal != "" {
-		return urlVal, nil
-	}
-
-	if data, ok := result["data"].(map[string]interface{}); ok {
-		if urlVal, ok := data["url"].(string); ok && urlVal != "" {
-			return urlVal, nil
-		}
-	}
-
-	if linkVal, ok := result["link"].(string); ok && linkVal != "" {
-		return linkVal, nil
+	if result.URL != "" {
+		return result.URL, nil
 	}
 
 	return "", fmt.Errorf("URL not found in Jumo response")
@@ -432,7 +432,7 @@ func (q *QobuzDownloader) DownloadByISRC(deezerISRC, outputDir, quality, filenam
 		}
 	}
 
-	track, err := q.SearchByISRC(deezerISRC)
+	track, err := q.searchByISRC(deezerISRC)
 	if err != nil {
 		return "", err
 	}
