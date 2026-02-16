@@ -537,8 +537,8 @@ func ConvertAudio(req ConvertAudioRequest) ([]ConvertAudioResult, error) {
 			baseName := strings.TrimSuffix(filepath.Base(inputFile), inputExt)
 			inputDir := filepath.Dir(inputFile)
 
-			outputFormatUpper := strings.ToUpper(req.OutputFormat)
-			outputDir := filepath.Join(inputDir, outputFormatUpper)
+			// Output to the same directory as input without creating subdirectory
+			outputDir := inputDir
 
 			if err := os.MkdirAll(outputDir, 0755); err != nil {
 				result.Error = fmt.Sprintf("failed to create output directory: %v", err)

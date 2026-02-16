@@ -436,25 +436,29 @@ func downloadTrack(trackData map[string]interface{}) {
 		os.Exit(1)
 	}
 
-	if strings.HasPrefix(filePath, "EXISTS:") {
-		logWarning("File already exists: %s", strings.TrimPrefix(filePath, "EXISTS:"))
+	// Handle existing files
+	actualFilePath := filePath
+	isExisting := strings.HasPrefix(filePath, "EXISTS:")
+	if isExisting {
+		actualFilePath = strings.TrimPrefix(filePath, "EXISTS:")
+		logWarning("File already exists: %s", actualFilePath)
 	} else {
 		logSuccess("Downloaded: %s", filePath)
+	}
 
-		// Convert to requested format if needed
-		if outputFormat != "flac" && !strings.HasPrefix(filePath, "EXISTS:") {
-			logInfo("\nConverting to %s format...", strings.ToUpper(outputFormat))
-			convertedPath, convertErr := convertToFormat(filePath, outputFormat, mp3Bitrate)
-			if convertErr != nil {
-				logError("Conversion failed: %v", convertErr)
-				os.Exit(1)
-			}
-			logSuccess("Converted to: %s", convertedPath)
+	// Convert to requested format if needed
+	if outputFormat != "flac" {
+		logInfo("\nConverting to %s format...", strings.ToUpper(outputFormat))
+		convertedPath, convertErr := convertToFormat(actualFilePath, outputFormat, mp3Bitrate)
+		if convertErr != nil {
+			logError("Conversion failed: %v", convertErr)
+			os.Exit(1)
+		}
+		logSuccess("Converted to: %s", convertedPath)
 
-			// Remove original FLAC file after successful conversion
-			if err := os.Remove(filePath); err != nil {
-				logWarning("Could not remove original FLAC file: %v", err)
-			}
+		// Remove original FLAC file after successful conversion
+		if err := os.Remove(actualFilePath); err != nil {
+			logWarning("Could not remove original FLAC file: %v", err)
 		}
 	}
 }
@@ -539,22 +543,28 @@ func downloadBatch(trackList []interface{}, contentType string) {
 		if downloadErr != nil {
 			logError("Failed: %s - %s (%v)", artistName, trackName, downloadErr)
 			failed++
-		} else if strings.HasPrefix(filePath, "EXISTS:") {
-			logWarning("Skipped (exists): %s - %s", artistName, trackName)
-			skipped++
 		} else {
-			logSuccess("Downloaded: %s - %s", artistName, trackName)
-			succeeded++
+			actualFilePath := filePath
+			isExisting := strings.HasPrefix(filePath, "EXISTS:")
 
-			// Convert to MP3 if requested
-			if outputFormat != "flac" && outputFormat != "" && !strings.HasPrefix(filePath, "EXISTS:") {
-				convertedPath, convertErr := convertToFormat(filePath, outputFormat, mp3Bitrate)
+			if isExisting {
+				actualFilePath = strings.TrimPrefix(filePath, "EXISTS:")
+				logWarning("Skipped (exists): %s - %s", artistName, trackName)
+				skipped++
+			} else {
+				logSuccess("Downloaded: %s - %s", artistName, trackName)
+				succeeded++
+			}
+
+			// Convert to requested format if needed (works for both new and existing files)
+			if outputFormat != "flac" && outputFormat != "" {
+				convertedPath, convertErr := convertToFormat(actualFilePath, outputFormat, mp3Bitrate)
 				if convertErr != nil {
 					logWarning("Failed to convert to %s: %v", outputFormat, convertErr)
 				} else {
 					logSuccess("Converted to %s: %s", strings.ToUpper(outputFormat), filepath.Base(convertedPath))
 					// Remove original FLAC file after successful conversion
-					if err := os.Remove(filePath); err != nil {
+					if err := os.Remove(actualFilePath); err != nil {
 						logDebug("Warning: Failed to remove original file: %v", err)
 					}
 				}
