@@ -19,7 +19,9 @@ spotiflac https://open.spotify.com/track/... --auto
 - 🎯 **Smart Auto Mode** - Automatically tries multiple services with fallback
 - 📝 **Rich Metadata** - Album art, lyrics, copyright, and ISRC codes
 - 📦 **Batch Downloads** - Albums, playlists, and multiple tracks
-- 🌍 **Cross-Platform** - Windows, macOS, Linux (AMD64 & ARM64)
+- � **MP3/M4A Conversion** - Automatic conversion to MP3 or M4A with configurable bitrates
+- 📊 **Progress Display** - Real-time download progress with percentage, speed, and ETA
+- �🌍 **Cross-Platform** - Windows, macOS, Linux (AMD64 & ARM64)
 - 🚀 **Single Binary** - No dependencies, just download and run
 - 📋 **JSON Export** - Get metadata and download links without downloading
 - 🔍 **ISRC Matching** - Precise track matching across services
@@ -124,11 +126,16 @@ spotiflac [URL] [OPTIONS]
 | `--output-format`     |       | Output format (flac/mp3/m4a)          | `--output-format mp3` |
 | `--mp3-bitrate`       |       | MP3 bitrate (128k/192k/256k/320k)     | `--mp3-bitrate 320k`  |
 | `--dump-json`         | `-j`  | Print metadata as JSON and exit       | `-j`                  |
+| `--print-json`        |       | Print metadata as JSON                | `--print-json`        |
+| `--print <field>`     |       | Print specific field (title, artist)  | `--print title`       |
 | `--embed-lyrics`      | `-l`  | Embed lyrics                          | `-l`                  |
 | `--max-quality-cover` | `-c`  | High quality cover art                | `-c`                  |
 | `--delay`             | `-d`  | Delay between downloads (seconds)     | `-d 2.0`              |
 | `--verbose`           | `-v`  | Verbose output                        | `-v`                  |
 | `--quiet`             |       | Minimal output                        | `--quiet`             |
+| `--no-warnings`       |       | Suppress warning messages             | `--no-warnings`       |
+| `--newline`           |       | Output progress on new lines          | `--newline`           |
+| `--progress`          |       | Show/hide download progress           | `--progress=false`    |
 
 ### Quality Settings
 

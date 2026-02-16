@@ -249,12 +249,15 @@ func (t *TidalDownloader) DownloadFile(url, filepath string) error {
 	defer out.Close()
 
 	pw := NewProgressWriter(out)
+	if resp.ContentLength > 0 {
+		pw.SetTotalSize(resp.ContentLength)
+	}
 	_, err = io.Copy(pw, resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
-	fmt.Printf("\rDownloaded: %.2f MB (Complete)\n", float64(pw.GetTotal())/(1024*1024))
+	fmt.Printf("\rDownloaded: %.2f MB (Complete)          \n", float64(pw.GetTotal())/(1024*1024))
 
 	fmt.Println("Download complete")
 	return nil
@@ -299,12 +302,15 @@ func (t *TidalDownloader) DownloadFromManifest(manifestB64, outputPath string) e
 		defer out.Close()
 
 		pw := NewProgressWriter(out)
+		if resp.ContentLength > 0 {
+			pw.SetTotalSize(resp.ContentLength)
+		}
 		_, err = io.Copy(pw, resp.Body)
 		if err != nil {
 			return fmt.Errorf("failed to write file: %w", err)
 		}
 
-		fmt.Printf("\rDownloaded: %.2f MB (Complete)\n", float64(pw.GetTotal())/(1024*1024))
+		fmt.Printf("\rDownloaded: %.2f MB (Complete)          \n", float64(pw.GetTotal())/(1024*1024))
 		fmt.Println("Download complete")
 		return nil
 	}
@@ -330,6 +336,9 @@ func (t *TidalDownloader) DownloadFromManifest(manifestB64, outputPath string) e
 		}
 
 		pw := NewProgressWriter(out)
+		if resp.ContentLength > 0 {
+			pw.SetTotalSize(resp.ContentLength)
+		}
 		_, err = io.Copy(pw, resp.Body)
 		out.Close()
 
@@ -338,7 +347,7 @@ func (t *TidalDownloader) DownloadFromManifest(manifestB64, outputPath string) e
 			return fmt.Errorf("failed to write temp file: %w", err)
 		}
 
-		fmt.Printf("\rDownloaded: %.2f MB (Complete)\n", float64(pw.GetTotal())/(1024*1024))
+		fmt.Printf("\rDownloaded: %.2f MB (Complete)          \n", float64(pw.GetTotal())/(1024*1024))
 
 	} else {
 

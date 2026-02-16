@@ -49,7 +49,27 @@ var (
 	totalDownloadedLock sync.RWMutex
 	sessionStartTime    int64
 	sessionStartLock    sync.RWMutex
+
+	// Progress display options
+	useNewlineProgress  bool
+	showProgressDisplay bool = true
+	progressOptionsLock sync.RWMutex
 )
+
+// SetProgressOptions sets global progress display options
+func SetProgressOptions(newline bool, enabled bool) {
+	progressOptionsLock.Lock()
+	useNewlineProgress = newline
+	showProgressDisplay = enabled
+	progressOptionsLock.Unlock()
+}
+
+// GetProgressOptions returns current progress display options
+func GetProgressOptions() (bool, bool) {
+	progressOptionsLock.RLock()
+	defer progressOptionsLock.RUnlock()
+	return useNewlineProgress, showProgressDisplay
+}
 
 type ProgressInfo struct {
 	IsDownloading bool    `json:"is_downloading"`
@@ -116,23 +136,30 @@ func SetDownloading(downloading bool) {
 type ProgressWriter struct {
 	writer      io.Writer
 	total       int64
+	totalSize   int64
 	lastPrinted int64
 	startTime   int64
 	lastTime    int64
 	lastBytes   int64
 	itemID      string
+	useNewline  bool
+	enabled     bool
 }
 
 func NewProgressWriter(writer io.Writer) *ProgressWriter {
 	now := getCurrentTimeMillis()
+	newline, enabled := GetProgressOptions()
 	return &ProgressWriter{
 		writer:      writer,
 		total:       0,
+		totalSize:   0,
 		lastPrinted: 0,
 		startTime:   now,
 		lastTime:    now,
 		lastBytes:   0,
 		itemID:      "",
+		useNewline:  newline,
+		enabled:     enabled,
 	}
 }
 
@@ -142,6 +169,18 @@ func NewProgressWriterWithID(writer io.Writer, itemID string) *ProgressWriter {
 	return pw
 }
 
+func (pw *ProgressWriter) SetTotalSize(size int64) {
+	pw.totalSize = size
+}
+
+func (pw *ProgressWriter) SetNewline(useNewline bool) {
+	pw.useNewline = useNewline
+}
+
+func (pw *ProgressWriter) SetEnabled(enabled bool) {
+	pw.enabled = enabled
+}
+
 func getCurrentTimeMillis() int64 {
 	return time.Now().UnixMilli()
 }
@@ -149,6 +188,11 @@ func getCurrentTimeMillis() int64 {
 func (pw *ProgressWriter) Write(p []byte) (int, error) {
 	n, err := pw.writer.Write(p)
 	pw.total += int64(n)
+
+	// Skip progress display if disabled
+	if !pw.enabled {
+		return n, err
+	}
 
 	if pw.total-pw.lastPrinted >= 256*1024 {
 		mbDownloaded := float64(pw.total) / (1024 * 1024)
@@ -161,9 +205,52 @@ func (pw *ProgressWriter) Write(p []byte) (int, error) {
 		if timeDiff > 0 {
 			speedMBps = (bytesDiff / (1024 * 1024)) / timeDiff
 			SetDownloadSpeed(speedMBps)
-			fmt.Printf("\rDownloaded: %.2f MB (%.2f MB/s)", mbDownloaded, speedMBps)
+
+			// Show progress with percentage and ETA
+			if pw.totalSize > 0 {
+				percentage := float64(pw.total) * 100.0 / float64(pw.totalSize)
+				totalMB := float64(pw.totalSize) / (1024 * 1024)
+
+				// Calculate ETA
+				var eta string
+				if speedMBps > 0 {
+					remainingMB := totalMB - mbDownloaded
+					etaSeconds := int(remainingMB / speedMBps)
+					eta = formatETA(etaSeconds)
+				} else {
+					eta = "Unknown ETA"
+				}
+
+				if pw.useNewline {
+					fmt.Printf("[download] %5.1f%% of %7.2fMiB at %7.2fMiB/s ETA %s\n",
+						percentage, totalMB, speedMBps, eta)
+				} else {
+					fmt.Printf("\r[download] %5.1f%% of %7.2fMiB at %7.2fMiB/s ETA %s",
+						percentage, totalMB, speedMBps, eta)
+				}
+			} else {
+				if pw.useNewline {
+					fmt.Printf("Downloaded: %.2f MB (%.2f MB/s)\n", mbDownloaded, speedMBps)
+				} else {
+					fmt.Printf("\rDownloaded: %.2f MB (%.2f MB/s)", mbDownloaded, speedMBps)
+				}
+			}
 		} else {
-			fmt.Printf("\rDownloaded: %.2f MB", mbDownloaded)
+			if pw.totalSize > 0 {
+				percentage := float64(pw.total) * 100.0 / float64(pw.totalSize)
+				totalMB := float64(pw.totalSize) / (1024 * 1024)
+				if pw.useNewline {
+					fmt.Printf("[download] %5.1f%% of %7.2fMiB\n", percentage, totalMB)
+				} else {
+					fmt.Printf("\r[download] %5.1f%% of %7.2fMiB", percentage, totalMB)
+				}
+			} else {
+				if pw.useNewline {
+					fmt.Printf("Downloaded: %.2f MB\n", mbDownloaded)
+				} else {
+					fmt.Printf("\rDownloaded: %.2f MB", mbDownloaded)
+				}
+			}
 		}
 
 		SetDownloadProgress(mbDownloaded)
@@ -178,6 +265,24 @@ func (pw *ProgressWriter) Write(p []byte) (int, error) {
 	}
 
 	return n, err
+}
+
+func formatETA(seconds int) string {
+	if seconds < 0 {
+		return "Unknown ETA"
+	}
+	if seconds == 0 {
+		return "00:00"
+	}
+
+	hours := seconds / 3600
+	minutes := (seconds % 3600) / 60
+	secs := seconds % 60
+
+	if hours > 0 {
+		return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, secs)
+	}
+	return fmt.Sprintf("%02d:%02d", minutes, secs)
 }
 
 func (pw *ProgressWriter) GetTotal() int64 {
