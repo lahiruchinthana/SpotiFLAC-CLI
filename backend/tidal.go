@@ -384,6 +384,10 @@ func (t *TidalDownloader) DownloadFromManifest(manifestB64, outputPath string) e
 		var totalBytes int64
 		lastTime := time.Now()
 		var lastBytes int64
+
+		// Get progress display settings
+		useNewline, showProgress := GetProgressOptions()
+
 		for i, mediaURL := range mediaURLs {
 			resp, err := doRequest(mediaURL)
 			if err != nil {
@@ -406,26 +410,65 @@ func (t *TidalDownloader) DownloadFromManifest(manifestB64, outputPath string) e
 				return fmt.Errorf("failed to write segment %d: %w", i+1, err)
 			}
 
-			mbDownloaded := float64(totalBytes) / (1024 * 1024)
-			now := time.Now()
-			timeDiff := now.Sub(lastTime).Seconds()
-			var speedMBps float64
-			if timeDiff > 0.1 {
-				bytesDiff := float64(totalBytes - lastBytes)
-				speedMBps = (bytesDiff / (1024 * 1024)) / timeDiff
-				SetDownloadSpeed(speedMBps)
-				lastTime = now
-				lastBytes = totalBytes
-			}
-			SetDownloadProgress(mbDownloaded)
+			// Show progress if enabled
+			if showProgress {
+				mbDownloaded := float64(totalBytes) / (1024 * 1024)
+				now := time.Now()
+				timeDiff := now.Sub(lastTime).Seconds()
+				var speedMBps float64
+				if timeDiff > 0.1 {
+					bytesDiff := float64(totalBytes - lastBytes)
+					speedMBps = (bytesDiff / (1024 * 1024)) / timeDiff
+					SetDownloadSpeed(speedMBps)
+					lastTime = now
+					lastBytes = totalBytes
+				}
+				SetDownloadProgress(mbDownloaded)
 
-			fmt.Printf("\rDownloading: %.2f MB (%d/%d segments)", mbDownloaded, i+1, totalSegments)
+				// Estimate total size based on average segment size
+				avgBytesPerSegment := float64(totalBytes) / float64(i+1)
+				estimatedTotalBytes := avgBytesPerSegment * float64(totalSegments)
+				estimatedTotalMB := estimatedTotalBytes / (1024 * 1024)
+
+				// Calculate percentage based on estimated total
+				percentage := (float64(totalBytes) / estimatedTotalBytes) * 100.0
+
+				// Calculate ETA
+				var eta string
+				if i > 0 && speedMBps > 0 {
+					remainingMB := estimatedTotalMB - mbDownloaded
+					etaSeconds := int(remainingMB / speedMBps)
+					minutes := etaSeconds / 60
+					seconds := etaSeconds % 60
+					eta = fmt.Sprintf("%02d:%02d", minutes, seconds)
+				} else {
+					eta = "Unknown"
+				}
+
+				// Use the same format as ProgressWriter for consistency
+				if useNewline {
+					fmt.Printf("[download] %5.1f%% of %7.2fMiB at %7.2fMiB/s ETA %s\n",
+						percentage, estimatedTotalMB, speedMBps, eta)
+				} else {
+					fmt.Printf("\r[download] %5.1f%% of %7.2fMiB at %7.2fMiB/s ETA %s",
+						percentage, estimatedTotalMB, speedMBps, eta)
+				}
+			}
 		}
 
 		out.Close()
 
 		tempInfo, _ := os.Stat(tempPath)
-		fmt.Printf("\rDownloaded: %.2f MB (Complete)          \n", float64(tempInfo.Size())/(1024*1024))
+		if showProgress {
+			totalMB := float64(tempInfo.Size()) / (1024 * 1024)
+			if useNewline {
+				fmt.Printf("[download] 100.0%% of %7.2fMiB - Complete\n", totalMB)
+			} else {
+				fmt.Printf("\r[download] 100.0%% of %7.2fMiB - Complete          \n", totalMB)
+			}
+		} else {
+			fmt.Printf("Downloaded: %.2f MB (Complete)\n", float64(tempInfo.Size())/(1024*1024))
+		}
 	}
 
 	fmt.Println("Converting to FLAC...")
@@ -573,7 +616,7 @@ func (t *TidalDownloader) DownloadByURL(tidalURL, outputDir, quality, filenameFo
 		URL:         spotifyURL,
 		Copyright:   spotifyCopyright,
 		Publisher:   spotifyPublisher,
-		Description: "https://github.com/afkarxyz/SpotiFLAC",
+		Description: "https://downbot.app",
 		ISRC:        isrc,
 	}
 
@@ -712,7 +755,7 @@ func (t *TidalDownloader) DownloadByURLWithFallback(tidalURL, outputDir, quality
 		URL:         spotifyURL,
 		Copyright:   spotifyCopyright,
 		Publisher:   spotifyPublisher,
-		Description: "https://github.com/afkarxyz/SpotiFLAC",
+		Description: "https://downbot.app",
 		ISRC:        isrc,
 	}
 
