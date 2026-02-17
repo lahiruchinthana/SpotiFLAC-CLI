@@ -429,7 +429,7 @@ func (a *AmazonDownloader) DownloadByURL(amazonURL, outputDir, quality, filename
 		URL:         spotifyURL,
 		Copyright:   spotifyCopyright,
 		Publisher:   spotifyPublisher,
-		Description: "https://github.com/afkarxyz/SpotiFLAC",
+		Description: "https://downbot.app",
 		ISRC:        isrc,
 	}
 
