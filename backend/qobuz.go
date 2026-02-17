@@ -523,7 +523,7 @@ func (q *QobuzDownloader) DownloadByISRC(deezerISRC, outputDir, quality, filenam
 		URL:         spotifyURL,
 		Copyright:   spotifyCopyright,
 		Publisher:   spotifyPublisher,
-		Description: "https://github.com/afkarxyz/SpotiFLAC",
+		Description: "https://downbot.app",
 	}
 
 	if err := EmbedMetadata(filepath, metadata, coverPath); err != nil {
