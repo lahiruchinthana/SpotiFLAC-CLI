@@ -33,16 +33,15 @@ var (
 	verbose              bool
 	dumpJSON             bool
 	writeInfoJSON        bool
-	// yt-dlp style options
-	printJSON     bool
-	noWarnings    bool
-	newline       bool
-	showProgress  bool
-	printTemplate string
+	printJSON            bool
+	noWarnings           bool
+	newline              bool
+	showProgress         bool
+	printTemplate        string
 	// MP3 conversion options
 	outputFormat string
 	mp3Bitrate   string
-	version      = "1.1.1"
+	version      = "1.1.2"
 )
 
 var rootCmd = &cobra.Command{
@@ -242,7 +241,7 @@ func runDownload(cmd *cobra.Command, args []string) {
 		}
 		downloadBatch(trackList, "album")
 
-	case *backend.PlaylistResponsePayload:
+	case backend.PlaylistResponsePayload:
 		// Playlist
 		logInfo("Playlist: %d tracks", len(data.TrackList))
 		trackList := make([]interface{}, len(data.TrackList))
@@ -311,7 +310,7 @@ func printMetadataJSONWithLinks(metadata interface{}, spotifyURL string) {
 		if len(data.TrackList) > 0 {
 			spotifyID = data.TrackList[0].SpotifyID
 		}
-	case *backend.PlaylistResponsePayload:
+	case backend.PlaylistResponsePayload:
 		if len(data.TrackList) > 0 {
 			spotifyID = data.TrackList[0].SpotifyID
 		}
@@ -394,7 +393,7 @@ func printSpecificField(metadata interface{}, field string) {
 	case *backend.AlbumResponsePayload:
 		album = &data.AlbumInfo
 		trackList = data.TrackList
-	case *backend.PlaylistResponsePayload:
+	case backend.PlaylistResponsePayload:
 		trackList = data.TrackList
 	case *backend.ArtistDiscographyPayload:
 		trackList = data.TrackList
@@ -496,7 +495,7 @@ func writeMetadataJSON(metadata interface{}, spotifyURL string) {
 		filename = sanitizeFilename(data.Track.Name + " - " + data.Track.Artists)
 	case *backend.AlbumResponsePayload:
 		filename = sanitizeFilename(data.AlbumInfo.Name)
-	case *backend.PlaylistResponsePayload:
+	case backend.PlaylistResponsePayload:
 		filename = "playlist"
 	case *backend.ArtistDiscographyPayload:
 		filename = sanitizeFilename(data.ArtistInfo.Name)
