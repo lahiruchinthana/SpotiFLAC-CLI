@@ -127,7 +127,9 @@ func runDownload(cmd *cobra.Command, args []string) {
 	}
 
 	// Set progress display options
-	backend.SetProgressOptions(newline, showProgress)
+	// Disable progress if quiet mode is enabled
+	effectiveProgress := showProgress && !quiet
+	backend.SetProgressOptions(newline, effectiveProgress)
 
 	if autoDownload {
 		service = "auto"
