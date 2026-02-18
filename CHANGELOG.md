@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.2] - 2026-02-18
+
+### 🐛 Fixed
+
+- **Critical:** Fixed playlist downloads failing with "Unknown content type" error
+  - Resolved type mismatch between `PlaylistResponsePayload` (value) and `*PlaylistResponsePayload` (pointer)
+  - Playlists now download correctly with all metadata and tracks
+
+---
+
 ## [1.1.1] - 2026-02-14
 
 ### ✨ Added - Enhanced Progress Display & Command-Line Options
