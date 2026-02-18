@@ -257,7 +257,12 @@ func (t *TidalDownloader) DownloadFile(url, filepath string) error {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
-	fmt.Printf("\rDownloaded: %.2f MB (Complete)          \n", float64(pw.GetTotal())/(1024*1024))
+	useNewline, _ := GetProgressOptions()
+	if useNewline {
+		fmt.Printf("[download] 100.0%% of %7.2fMiB - Complete\n", float64(pw.GetTotal())/(1024*1024))
+	} else {
+		fmt.Printf("\r[download] 100.0%% of %7.2fMiB - Complete          \n", float64(pw.GetTotal())/(1024*1024))
+	}
 
 	fmt.Println("Download complete")
 	return nil
@@ -310,7 +315,12 @@ func (t *TidalDownloader) DownloadFromManifest(manifestB64, outputPath string) e
 			return fmt.Errorf("failed to write file: %w", err)
 		}
 
-		fmt.Printf("\rDownloaded: %.2f MB (Complete)          \n", float64(pw.GetTotal())/(1024*1024))
+		useNewline, _ := GetProgressOptions()
+		if useNewline {
+			fmt.Printf("[download] 100.0%% of %7.2fMiB - Complete\n", float64(pw.GetTotal())/(1024*1024))
+		} else {
+			fmt.Printf("\r[download] 100.0%% of %7.2fMiB - Complete          \n", float64(pw.GetTotal())/(1024*1024))
+		}
 		fmt.Println("Download complete")
 		return nil
 	}
@@ -347,7 +357,12 @@ func (t *TidalDownloader) DownloadFromManifest(manifestB64, outputPath string) e
 			return fmt.Errorf("failed to write temp file: %w", err)
 		}
 
-		fmt.Printf("\rDownloaded: %.2f MB (Complete)          \n", float64(pw.GetTotal())/(1024*1024))
+		useNewline, _ := GetProgressOptions()
+		if useNewline {
+			fmt.Printf("[download] 100.0%% of %7.2fMiB - Complete\n", float64(pw.GetTotal())/(1024*1024))
+		} else {
+			fmt.Printf("\r[download] 100.0%% of %7.2fMiB - Complete          \n", float64(pw.GetTotal())/(1024*1024))
+		}
 
 	} else {
 

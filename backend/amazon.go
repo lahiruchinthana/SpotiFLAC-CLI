@@ -176,7 +176,12 @@ func (a *AmazonDownloader) DownloadFromAfkarXYZ(amazonURL, outputDir, quality st
 		return "", err
 	}
 
-	fmt.Printf("\rDownloaded: %.2f MB (Complete)          \n", float64(pw.GetTotal())/(1024*1024))
+	useNewline, _ := GetProgressOptions()
+	if useNewline {
+		fmt.Printf("[download] 100.0%% of %7.2fMiB - Complete\n", float64(pw.GetTotal())/(1024*1024))
+	} else {
+		fmt.Printf("\r[download] 100.0%% of %7.2fMiB - Complete          \n", float64(pw.GetTotal())/(1024*1024))
+	}
 
 	if apiResp.DecryptionKey != "" {
 		fmt.Printf("Decrypting file...\n")
