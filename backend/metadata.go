@@ -862,6 +862,16 @@ func embedMetadataToMP3(filePath string, metadata Metadata, coverPath string) er
 		tag.AddTextFrame("TPUB", id3v2.EncodingUTF8, metadata.Publisher)
 	}
 
+	if metadata.Description != "" {
+		tag.DeleteFrames(tag.CommonID("Comments"))
+		tag.AddCommentFrame(id3v2.CommentFrame{
+			Encoding:    id3v2.EncodingISO,
+			Language:    "eng",
+			Description: "",
+			Text:        metadata.Description,
+		})
+	}
+
 	if coverPath != "" && fileExists(coverPath) {
 
 		tag.DeleteFrames(tag.CommonID("Attached picture"))
