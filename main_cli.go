@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,23 +40,31 @@ var (
 	showProgress         bool
 	printTemplate        string
 	// MP3 conversion options
-	outputFormat string
-	mp3Bitrate   string
-	version      = "1.1.2"
+	outputFormat   string
+	mp3Bitrate     string
+	embedGenre     bool
+	useSingleGenre bool
+	version        = "1.1.3"
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "spotiflac [URL]",
 	Short: "SpotiFLAC - Download Spotify tracks in lossless FLAC format",
-	Long: `SpotiFLAC - Get Spotify tracks in true FLAC from Tidal, Qobuz & Amazon Music
+	Long: `SpotiFLAC - Get Spotify tracks in true FLAC from Tidal, Qobuz, Amazon Music & Deezer
 
 Examples:
   spotiflac https://open.spotify.com/track/...
   spotiflac https://open.spotify.com/album/... --service tidal
   spotiflac https://open.spotify.com/playlist/... --auto --output ./Music
   spotiflac https://open.spotify.com/track/... --quality HI_RES --embed-lyrics
-  
-Services: tidal, qobuz, amazon, auto (tries multiple services)
+  spotiflac https://open.spotify.com/track/... --output-format mp3 --mp3-bitrate 320k
+
+  Windows note: Spotify URLs often contain '&' (e.g. ?si=xxx&context=...) which the
+  Windows command prompt treats as a command separator. Always quote the URL:
+    spotiflac "https://open.spotify.com/track/...?si=xxx&context=..." --auto
+    spotiflac "https://open.spotify.com/track/..." --output-format mp3
+
+Services: tidal, qobuz, amazon, deezer, auto (tries multiple services)
 `,
 	Version: version,
 	Args:    cobra.MinimumNArgs(1),
@@ -73,7 +82,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&includeTrackNumber, "track-number", "n", false, "Include track number in filename")
 
 	// Service options
-	rootCmd.Flags().StringVarP(&service, "service", "s", "auto", "Download service: tidal, qobuz, amazon, auto")
+	rootCmd.Flags().StringVarP(&service, "service", "s", "auto", "Download service: tidal, qobuz, amazon, deezer, auto")
 	rootCmd.Flags().BoolVarP(&autoDownload, "auto", "a", false, "Auto mode: try multiple services (same as --service auto)")
 	rootCmd.Flags().StringVar(&autoOrder, "auto-order", "tidal-amazon-qobuz", "Service order for auto mode")
 	rootCmd.Flags().StringVar(&autoQuality, "auto-quality", "24", "Auto quality: 16 or 24 bit")
@@ -109,6 +118,10 @@ func init() {
 	// Format conversion options
 	rootCmd.Flags().StringVar(&outputFormat, "output-format", "flac", "Output format: flac, mp3, m4a")
 	rootCmd.Flags().StringVar(&mp3Bitrate, "mp3-bitrate", "320k", "MP3 bitrate (e.g., 128k, 192k, 256k, 320k)")
+
+	// Genre options
+	rootCmd.Flags().BoolVar(&embedGenre, "embed-genre", false, "Embed genre tag via MusicBrainz")
+	rootCmd.Flags().BoolVar(&useSingleGenre, "single-genre", false, "Use only the top genre (requires --embed-genre)")
 }
 
 func main() {
@@ -120,6 +133,16 @@ func main() {
 
 func runDownload(cmd *cobra.Command, args []string) {
 	spotifyURL := args[0]
+
+	// Sanitize the Spotify URL: strip query parameters and fragment.
+	// On Windows cmd/PowerShell, unquoted Spotify URLs containing '&' get split
+	// by the shell — the URL arrives already truncated at the '&'. The content ID
+	// lives entirely in the path, so removing query params is always safe.
+	if parsedURL, err := url.Parse(spotifyURL); err == nil {
+		parsedURL.RawQuery = ""
+		parsedURL.Fragment = ""
+		spotifyURL = parsedURL.String()
+	}
 
 	// Handle --print-json flag (alias for --dump-json)
 	if printJSON {
@@ -754,7 +777,7 @@ func downloadWithAutoFallback(spotifyID, isrc, trackName, artistName, albumName,
 					embedMaxQualityCover, trackNumber, discNumber, totalTracks,
 					totalDiscs, copyright, publisher,
 					fmt.Sprintf("https://open.spotify.com/track/%s", spotifyID),
-					false, allowFallback,
+					false, allowFallback, useSingleGenre, embedGenre,
 				)
 				if err == nil {
 					return filePath, nil
@@ -774,7 +797,7 @@ func downloadWithAutoFallback(spotifyID, isrc, trackName, artistName, albumName,
 					trackNumber, discNumber, totalTracks, embedMaxQualityCover,
 					totalDiscs, copyright, publisher,
 					fmt.Sprintf("https://open.spotify.com/track/%s", spotifyID),
-					false, // useFirstArtistOnly
+					false, useSingleGenre, embedGenre,
 				)
 				if err == nil {
 					return filePath, nil
@@ -799,7 +822,7 @@ func downloadWithAutoFallback(spotifyID, isrc, trackName, artistName, albumName,
 						embedMaxQualityCover, trackNumber, discNumber, totalTracks,
 						totalDiscs, copyright, publisher,
 						fmt.Sprintf("https://open.spotify.com/track/%s", spotifyID),
-						allowFallback,
+						allowFallback, useSingleGenre, embedGenre,
 					)
 					if err == nil {
 						return filePath, nil
@@ -808,6 +831,24 @@ func downloadWithAutoFallback(spotifyID, isrc, trackName, artistName, albumName,
 				}
 			}
 			logDebug("Qobuz failed, trying next service...")
+
+		case "deezer":
+			logDebug("Trying Deezer (via Yoinkify)...")
+			downloader := backend.NewDeezerDownloader()
+			filePath, err := downloader.Download(
+				spotifyID, outputDir, filenameFormat,
+				"", "", includeTrackNumber, trackNumber, trackName,
+				artistName, albumName, albumArtist, releaseDate, coverURL,
+				trackNumber, discNumber, totalTracks, embedMaxQualityCover,
+				totalDiscs, copyright, publisher,
+				fmt.Sprintf("https://open.spotify.com/track/%s", spotifyID),
+				false, useSingleGenre, embedGenre,
+			)
+			if err == nil {
+				return filePath, nil
+			}
+			lastErr = err
+			logDebug("Deezer failed, trying next service...")
 		}
 	}
 
@@ -829,6 +870,7 @@ func downloadWithService(svc, spotifyID, isrc, trackName, artistName, albumName,
 			albumName, albumArtist, releaseDate, true, coverURL,
 			embedMaxQualityCover, trackNumber, discNumber, totalTracks,
 			totalDiscs, copyright, publisher, spotifyURL, false, allowFallback,
+			useSingleGenre, embedGenre,
 		)
 
 	case "qobuz":
@@ -851,6 +893,7 @@ func downloadWithService(svc, spotifyID, isrc, trackName, artistName, albumName,
 			albumName, albumArtist, releaseDate, true, coverURL,
 			embedMaxQualityCover, trackNumber, discNumber, totalTracks,
 			totalDiscs, copyright, publisher, spotifyURL, allowFallback,
+			useSingleGenre, embedGenre,
 		)
 
 	case "amazon":
@@ -861,7 +904,18 @@ func downloadWithService(svc, spotifyID, isrc, trackName, artistName, albumName,
 			artistName, albumName, albumArtist, releaseDate, coverURL,
 			trackNumber, discNumber, totalTracks, embedMaxQualityCover,
 			totalDiscs, copyright, publisher, spotifyURL,
-			false, // useFirstArtistOnly
+			false, useSingleGenre, embedGenre,
+		)
+
+	case "deezer":
+		downloader := backend.NewDeezerDownloader()
+		return downloader.Download(
+			spotifyID, outputDir, filenameFormat,
+			"", "", includeTrackNumber, trackNumber, trackName,
+			artistName, albumName, albumArtist, releaseDate, coverURL,
+			trackNumber, discNumber, totalTracks, embedMaxQualityCover,
+			totalDiscs, copyright, publisher, spotifyURL,
+			false, useSingleGenre, embedGenre,
 		)
 
 	default:

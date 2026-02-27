@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.3] - 2026-02-25
+
+### ✨ Added - Deezer Service & Full v7.1.0 Backend Sync
+
+Full alignment with upstream SpotiFLAC v7.1.0, adding Deezer as a fourth download
+service and several backend improvements across the entire stack.
+
+#### New Service: Deezer (via Yoinkify)
+
+- **`backend/deezer.go`** — New Deezer downloader using the `yoinkify.lol` API
+  - Downloads FLAC via POST to `yoinkify.lol/api/download` with `{url, format:"flac"}`
+  - Full metadata pipeline: cover embedding, lyrics, genre, MusicBrainz, filename formatting
+  - Integrated into both `--service deezer` and `--service auto` fallback chain
+
+#### CLI Wiring for Deezer
+
+- `--service` flag now accepts `deezer` as a valid value
+- Long description updated: *"Get Spotify tracks in true FLAC from Tidal, Qobuz, Amazon Music & Deezer"*
+- `downloadWithService()` — new `case "deezer"` block
+- `downloadWithAutoFallback()` — Deezer added as fourth option in the auto chain
+
+#### Backend Sync (v7.1.0)
+
+- **`analysis.go`** — Added `GetMetadataWithFFprobe()` function; `AnalysisResult` now includes `Bitrate` field
+- **`cover.go`** — Fixed `{date}` template variable support in cover file naming
+- **`filename.go`** — Fixed `{date}` template variable support in filename formatting
+- **`lyrics.go`** — Spotify Lyrics API added as first-priority source before Musixmatch/NetEase
+- **`uploader.go`** — Dynamic upload URL discovery replaces hardcoded endpoint
+- **`musicbrainz.go`** — New MusicBrainz integration for genre tagging via `--embed-genre`
+- **`metadata.go`** — `Genre` field added to `TrackMetadata` struct
+- **`tidal.go`** — API endpoint cleanup; genre field populated from metadata
+- **`qobuz.go`** — API endpoint cleanup; genre field populated from metadata
+- **`amazon.go`** — Genre field populated from metadata
+
+#### Preserved CLI-Specific Behaviour
+
+- `spotfetch.go` — Custom TOTP obfuscation (byte-array XOR, hex+base32 encoding) retained; upstream plain-string secret not adopted
+- All new downloader `Description` fields set to `"https://downbot.app"` instead of upstream GitHub URL
+
+---
+
 ## [1.1.2] - 2026-02-18
 
 ### 🐛 Fixed
