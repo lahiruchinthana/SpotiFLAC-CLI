@@ -154,7 +154,7 @@ func (q *QobuzDownloader) DownloadFromJumo(trackID int64, quality string) (strin
 		return "", err
 	}
 
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
 	req.Header.Set("Referer", "https://jumo-dl.pages.dev/")
 
 	resp, err := client.Do(req)
@@ -230,7 +230,6 @@ func (q *QobuzDownloader) GetDownloadURL(trackID int64, quality string, allowFal
 	standardAPIs := []string{
 		"https://dab.yeet.su/api/stream?trackId=",
 		"https://dabmusic.xyz/api/stream?trackId=",
-		"https://qobuz.squid.wtf/api/download-music?track_id=",
 	}
 
 	downloadFunc := func(qual string) (string, error) {
@@ -431,7 +430,7 @@ func buildQobuzFilename(title, artist, album, albumArtist, releaseDate string, t
 	return filename + ".flac"
 }
 
-func (q *QobuzDownloader) DownloadByISRC(deezerISRC, outputDir, quality, filenameFormat string, includeTrackNumber bool, position int, spotifyTrackName, spotifyArtistName, spotifyAlbumName, spotifyAlbumArtist, spotifyReleaseDate string, useAlbumTrackNumber bool, spotifyCoverURL string, embedMaxQualityCover bool, spotifyTrackNumber, spotifyDiscNumber, spotifyTotalTracks int, spotifyTotalDiscs int, spotifyCopyright, spotifyPublisher, spotifyURL string, allowFallback bool) (string, error) {
+func (q *QobuzDownloader) DownloadByISRC(deezerISRC, outputDir, quality, filenameFormat string, includeTrackNumber bool, position int, spotifyTrackName, spotifyArtistName, spotifyAlbumName, spotifyAlbumArtist, spotifyReleaseDate string, useAlbumTrackNumber bool, spotifyCoverURL string, embedMaxQualityCover bool, spotifyTrackNumber, spotifyDiscNumber, spotifyTotalTracks int, spotifyTotalDiscs int, spotifyCopyright, spotifyPublisher, spotifyURL string, allowFallback bool, useSingleGenre bool, embedGenre bool) (string, error) {
 	fmt.Printf("Fetching track info for ISRC: %s\n", deezerISRC)
 
 	if outputDir != "." {
@@ -494,6 +493,23 @@ func (q *QobuzDownloader) DownloadByISRC(deezerISRC, outputDir, quality, filenam
 
 	fmt.Printf("Downloaded: %s\n", filepath)
 
+	genreChan := make(chan string, 1)
+	if embedGenre && deezerISRC != "" {
+		go func() {
+			var genre string
+			fmt.Println("Fetching MusicBrainz metadata...")
+			if fetchedMeta, err := FetchMusicBrainzMetadata(deezerISRC, spotifyTrackName, spotifyArtistName, spotifyAlbumName, useSingleGenre, embedGenre); err == nil {
+				genre = fetchedMeta.Genre
+				fmt.Println("✓ MusicBrainz metadata fetched")
+			} else {
+				fmt.Printf("Warning: Failed to fetch MusicBrainz metadata: %v\n", err)
+			}
+			genreChan <- genre
+		}()
+	} else {
+		genreChan <- ""
+	}
+
 	coverPath := ""
 
 	if spotifyCoverURL != "" {
@@ -515,6 +531,8 @@ func (q *QobuzDownloader) DownloadByISRC(deezerISRC, outputDir, quality, filenam
 		trackNumberToEmbed = 1
 	}
 
+	genre := <-genreChan
+
 	metadata := Metadata{
 		Title:       trackTitle,
 		Artist:      artists,
@@ -529,6 +547,7 @@ func (q *QobuzDownloader) DownloadByISRC(deezerISRC, outputDir, quality, filenam
 		Copyright:   spotifyCopyright,
 		Publisher:   spotifyPublisher,
 		Description: "https://downbot.app",
+		Genre:       genre,
 	}
 
 	if err := EmbedMetadata(filepath, metadata, coverPath); err != nil {

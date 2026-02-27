@@ -32,6 +32,7 @@ type Metadata struct {
 	Lyrics      string
 	Description string
 	ISRC        string
+	Genre       string
 }
 
 func EmbedMetadata(filepath string, metadata Metadata, coverPath string) error {
@@ -88,6 +89,9 @@ func EmbedMetadata(filepath string, metadata Metadata, coverPath string) error {
 	}
 	if metadata.ISRC != "" {
 		_ = cmt.Add("ISRC", metadata.ISRC)
+	}
+	if metadata.Genre != "" {
+		_ = cmt.Add("GENRE", metadata.Genre)
 	}
 
 	if metadata.Lyrics != "" {
@@ -862,6 +866,11 @@ func embedMetadataToMP3(filePath string, metadata Metadata, coverPath string) er
 		tag.AddTextFrame("TPUB", id3v2.EncodingUTF8, metadata.Publisher)
 	}
 
+	if metadata.Genre != "" {
+		tag.DeleteFrames("TCON")
+		tag.AddTextFrame("TCON", id3v2.EncodingISO, metadata.Genre)
+	}
+
 	if metadata.Description != "" {
 		tag.DeleteFrames(tag.CommonID("Comments"))
 		tag.AddCommentFrame(id3v2.CommentFrame{
@@ -954,6 +963,9 @@ func embedMetadataToM4A(filePath string, metadata Metadata, coverPath string) er
 	}
 	if metadata.Publisher != "" {
 		args = append(args, "-metadata", "publisher="+metadata.Publisher)
+	}
+	if metadata.Genre != "" {
+		args = append(args, "-metadata", "genre="+metadata.Genre)
 	}
 
 	tmpOutputFile := strings.TrimSuffix(filePath, pathfilepath.Ext(filePath)) + ".tmp" + pathfilepath.Ext(filePath)

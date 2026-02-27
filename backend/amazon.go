@@ -52,7 +52,7 @@ func (a *AmazonDownloader) GetAmazonURLFromSpotify(spotifyTrackID string) (strin
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
 
 	fmt.Println("Getting Amazon URL...")
 
@@ -118,7 +118,7 @@ func (a *AmazonDownloader) DownloadFromAfkarXYZ(amazonURL, outputDir, quality st
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
 
 	fmt.Printf("Fetching from Amazon API (ASIN: %s)...\n", asin)
 	resp, err := a.client.Do(req)
@@ -156,7 +156,7 @@ func (a *AmazonDownloader) DownloadFromAfkarXYZ(amazonURL, outputDir, quality st
 	defer out.Close()
 
 	dlReq, _ := http.NewRequest("GET", downloadURL, nil)
-	dlReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36")
+	dlReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
 
 	dlResp, err := a.client.Do(dlReq)
 	if err != nil {
@@ -269,7 +269,7 @@ func (a *AmazonDownloader) DownloadFromService(amazonURL, outputDir, quality str
 	return a.DownloadFromAfkarXYZ(amazonURL, outputDir, quality)
 }
 
-func (a *AmazonDownloader) DownloadByURL(amazonURL, outputDir, quality, filenameFormat, playlistName, playlistOwner string, includeTrackNumber bool, position int, spotifyTrackName, spotifyArtistName, spotifyAlbumName, spotifyAlbumArtist, spotifyReleaseDate, spotifyCoverURL string, spotifyTrackNumber, spotifyDiscNumber, spotifyTotalTracks int, embedMaxQualityCover bool, spotifyTotalDiscs int, spotifyCopyright, spotifyPublisher, spotifyURL string, useFirstArtistOnly bool) (string, error) {
+func (a *AmazonDownloader) DownloadByURL(amazonURL, outputDir, quality, filenameFormat, playlistName, playlistOwner string, includeTrackNumber bool, position int, spotifyTrackName, spotifyArtistName, spotifyAlbumName, spotifyAlbumArtist, spotifyReleaseDate, spotifyCoverURL string, spotifyTrackNumber, spotifyDiscNumber, spotifyTotalTracks int, embedMaxQualityCover bool, spotifyTotalDiscs int, spotifyCopyright, spotifyPublisher, spotifyURL string, useFirstArtistOnly bool, useSingleGenre bool, embedGenre bool) (string, error) {
 
 	if outputDir != "." {
 		if err := os.MkdirAll(outputDir, 0755); err != nil {
@@ -293,24 +293,38 @@ func (a *AmazonDownloader) DownloadByURL(amazonURL, outputDir, quality, filename
 		}
 	}
 
-	isrcChan := make(chan string, 1)
+	type mbResult struct {
+		ISRC  string
+		Genre string
+	}
+
+	metaChan := make(chan mbResult, 1)
 	if spotifyURL != "" {
 		go func() {
-			var isrc string
+			res := mbResult{}
 			parts := strings.Split(spotifyURL, "/")
 			if len(parts) > 0 {
 				sID := strings.Split(parts[len(parts)-1], "?")[0]
 				if sID != "" {
 					client := NewSongLinkClient()
 					if val, err := client.GetISRC(sID); err == nil {
-						isrc = val
+						res.ISRC = val
 					}
 				}
 			}
-			isrcChan <- isrc
+			if embedGenre && res.ISRC != "" {
+				fmt.Println("Fetching MusicBrainz metadata...")
+				if fetchedMeta, err := FetchMusicBrainzMetadata(res.ISRC, spotifyTrackName, spotifyArtistName, spotifyAlbumName, useSingleGenre, embedGenre); err == nil {
+					res.Genre = fetchedMeta.Genre
+					fmt.Println("✓ MusicBrainz metadata fetched")
+				} else {
+					fmt.Printf("Warning: Failed to fetch MusicBrainz metadata: %v\n", err)
+				}
+			}
+			metaChan <- res
 		}()
 	} else {
-		close(isrcChan)
+		close(metaChan)
 	}
 
 	fmt.Printf("Using Amazon URL: %s\n", amazonURL)
@@ -321,8 +335,11 @@ func (a *AmazonDownloader) DownloadByURL(amazonURL, outputDir, quality, filename
 	}
 
 	var isrc string
+	var genre string
 	if spotifyURL != "" {
-		isrc = <-isrcChan
+		result := <-metaChan
+		isrc = result.ISRC
+		genre = result.Genre
 	}
 
 	originalFileDir := filepath.Dir(filePath)
@@ -436,6 +453,7 @@ func (a *AmazonDownloader) DownloadByURL(amazonURL, outputDir, quality, filename
 		Publisher:   spotifyPublisher,
 		Description: "https://downbot.app",
 		ISRC:        isrc,
+		Genre:       genre,
 	}
 
 	if err := EmbedMetadataToConvertedFile(filePath, metadata, coverPath); err != nil {
@@ -462,7 +480,7 @@ func (a *AmazonDownloader) DownloadByURL(amazonURL, outputDir, quality, filename
 }
 
 func (a *AmazonDownloader) DownloadBySpotifyID(spotifyTrackID, outputDir, quality, filenameFormat, playlistName, playlistOwner string, includeTrackNumber bool, position int, spotifyTrackName, spotifyArtistName, spotifyAlbumName, spotifyAlbumArtist, spotifyReleaseDate, spotifyCoverURL string, spotifyTrackNumber, spotifyDiscNumber, spotifyTotalTracks int, embedMaxQualityCover bool, spotifyTotalDiscs int, spotifyCopyright, spotifyPublisher, spotifyURL string,
-	useFirstArtistOnly bool,
+	useFirstArtistOnly bool, useSingleGenre bool, embedGenre bool,
 ) (string, error) {
 
 	amazonURL, err := a.GetAmazonURLFromSpotify(spotifyTrackID)
@@ -470,5 +488,5 @@ func (a *AmazonDownloader) DownloadBySpotifyID(spotifyTrackID, outputDir, qualit
 		return "", err
 	}
 
-	return a.DownloadByURL(amazonURL, outputDir, quality, filenameFormat, playlistName, playlistOwner, includeTrackNumber, position, spotifyTrackName, spotifyArtistName, spotifyAlbumName, spotifyAlbumArtist, spotifyReleaseDate, spotifyCoverURL, spotifyTrackNumber, spotifyDiscNumber, spotifyTotalTracks, embedMaxQualityCover, spotifyTotalDiscs, spotifyCopyright, spotifyPublisher, spotifyURL, useFirstArtistOnly)
+	return a.DownloadByURL(amazonURL, outputDir, quality, filenameFormat, playlistName, playlistOwner, includeTrackNumber, position, spotifyTrackName, spotifyArtistName, spotifyAlbumName, spotifyAlbumArtist, spotifyReleaseDate, spotifyCoverURL, spotifyTrackNumber, spotifyDiscNumber, spotifyTotalTracks, embedMaxQualityCover, spotifyTotalDiscs, spotifyCopyright, spotifyPublisher, spotifyURL, useFirstArtistOnly, useSingleGenre, embedGenre)
 }

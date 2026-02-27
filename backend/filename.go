@@ -33,6 +33,7 @@ func BuildExpectedFilename(trackName, artistName, albumName, albumArtist, releas
 		filename = strings.ReplaceAll(filename, "{album}", safeAlbum)
 		filename = strings.ReplaceAll(filename, "{album_artist}", safeAlbumArtist)
 		filename = strings.ReplaceAll(filename, "{year}", year)
+		filename = strings.ReplaceAll(filename, "{date}", SanitizeFilename(releaseDate))
 		filename = strings.ReplaceAll(filename, "{playlist}", safePlaylist)
 		filename = strings.ReplaceAll(filename, "{creator}", safeCreator)
 
