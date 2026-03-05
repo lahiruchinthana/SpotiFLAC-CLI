@@ -93,7 +93,7 @@ spotiflac https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp --auto
 spotiflac https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp --auto --output-format mp3
 
 # High quality with lyrics and cover art
-spotiflac https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp --auto --auto-quality 24 --embed-lyrics --max-quality-cover
+spotiflac https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp --auto --auto-quality 24 --lyrics --max-quality-cover
 
 # Download entire album as MP3
 spotiflac https://open.spotify.com/album/4a6NzYL1YHRUgx9e3YZI6I --auto --output-format mp3 -o ./Music
@@ -128,7 +128,8 @@ spotiflac [URL] [OPTIONS]
 | `--dump-json`         | `-j`  | Print metadata as JSON and exit       | `-j`                  |
 | `--print-json`        |       | Print metadata as JSON                | `--print-json`        |
 | `--print <field>`     |       | Print specific field (title, artist)  | `--print title`       |
-| `--embed-lyrics`      | `-l`  | Embed lyrics                          | `-l`                  |
+| `--lyrics`            | `-l`  | Fetch lyrics, embed + save .lrc file | `-l`                  |
+| `--embed-lyrics`      |       | Embed lyrics only (no .lrc file)      | `--embed-lyrics`      |
 | `--max-quality-cover` | `-c`  | High quality cover art                | `-c`                  |
 | `--delay`             | `-d`  | Delay between downloads (seconds)     | `-d 2.0`              |
 | `--verbose`           | `-v`  | Verbose output                        | `-v`                  |
@@ -208,7 +209,7 @@ spotiflac URL -j | jq '.download_links'
 spotiflac https://open.spotify.com/track/1k0JAiH11gHL9dc5dfQjQr \
   --auto \
   --auto-quality 24 \
-  --embed-lyrics \
+  --lyrics \
   --max-quality-cover \
   -o ~/Music
 ```
@@ -218,7 +219,7 @@ spotiflac https://open.spotify.com/track/1k0JAiH11gHL9dc5dfQjQr \
 ```bash
 spotiflac https://open.spotify.com/album/4a6NzYL1YHRUgx9e3YZI6I \
   --auto \
-  --embed-lyrics \
+  --lyrics \
   --track-number \
   -o ~/Music
 ```
@@ -265,7 +266,7 @@ SpotiFLAC-CLI uses command-line flags for all configuration. For convenience, yo
 alias sfdl='spotiflac --auto --auto-quality 24'
 
 # Download with all metadata
-alias sfdl-full='spotiflac --auto --auto-quality 24 --embed-lyrics --max-quality-cover'
+alias sfdl-full='spotiflac --auto --auto-quality 24 --lyrics --max-quality-cover'
 
 # Metadata only
 alias sfmeta='spotiflac --dump-json'
@@ -275,7 +276,7 @@ alias sfmeta='spotiflac --dump-json'
 
 ```powershell
 function sfdl { spotiflac $args --auto --auto-quality 24 }
-function sfdl-full { spotiflac $args --auto --auto-quality 24 --embed-lyrics --max-quality-cover }
+function sfdl-full { spotiflac $args --auto --auto-quality 24 --lyrics --max-quality-cover }
 function sfmeta { spotiflac $args --dump-json }
 ```
 

@@ -296,24 +296,19 @@ func (c *LyricsClient) FetchLyricsAllSources(spotifyID, trackName, artistName st
 	if err == nil && resp != nil && !resp.Error && len(resp.Lines) > 0 {
 		return resp, "Spotify", nil
 	}
-	fmt.Printf("  Spotify Lyrics API: %v\n", err)
 
 	resp, err = c.FetchLyricsWithMetadata(trackName, artistName, duration)
 	if err == nil && resp != nil && !resp.Error && len(resp.Lines) > 0 {
 		return resp, "LRCLIB", nil
 	}
-	fmt.Printf("   LRCLIB exact: %v\n", err)
 
 	resp, err = c.FetchLyricsFromLRCLibSearch(trackName, artistName)
 	if err == nil && resp != nil && !resp.Error && len(resp.Lines) > 0 {
 		return resp, "LRCLIB Search", nil
 	}
-	fmt.Printf("   LRCLIB search: %v\n", err)
 
 	simplifiedTrack := simplifyTrackName(trackName)
 	if simplifiedTrack != trackName {
-		fmt.Printf("   Trying simplified name: %s\n", simplifiedTrack)
-
 		resp, err = c.FetchLyricsWithMetadata(simplifiedTrack, artistName, duration)
 		if err == nil && resp != nil && !resp.Error && len(resp.Lines) > 0 {
 			return resp, "LRCLIB (simplified)", nil

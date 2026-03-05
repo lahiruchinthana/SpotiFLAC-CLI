@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.5] - 2026-03-06
+
+### 🐛 Fixed
+
+#### Lyrics — `[ExtractLyrics] No lyrics found in FLAC` When Using `--embed-lyrics` or Converting to MP3
+
+- **Root cause**: The `--embed-lyrics` / `-l` flag was declared and registered but never acted upon — `downloadTrack()` and `downloadBatch()` never called any lyrics API. The FFmpeg conversion pipeline had code to re-embed existing lyrics during FLAC→MP3 conversion, but since no lyrics were ever fetched/embedded first, it always printed the "no lyrics found" warning.
+- **Fix**: `downloadTrack()` and `downloadBatch()` now call `fetchAndEmbedLyrics()` (which calls `FetchLyricsAllSources` → `EmbedLyricsOnlyUniversal`) after download and _before_ any format conversion. This ensures lyrics are pre-embedded in the FLAC, so the conversion pipeline correctly carries them into the MP3/M4A output.
+- Removed noisy `fmt.Printf` debug lines from `FetchLyricsAllSources` in `backend/lyrics.go` that were printing Spotify/LRCLIB error details to stdout on every source failure.
+
+### ✨ Added
+
+#### New `--lyrics` / `-l` Flag
+
+- **`--lyrics` / `-l`**: Fetches lyrics from Spotify Lyrics API → LRCLIB exact → LRCLIB search (with simplified name fallbacks), embeds them into the audio file metadata, **and** saves a `.lrc` file alongside the audio track (e.g. `Shape of You - Ed Sheeran.lrc`).
+- **`--embed-lyrics`** (unchanged shorthand removed): Embeds lyrics into the audio file metadata only — no `.lrc` file is saved. Shorthand `-l` has been reassigned to `--lyrics`.
+- Both FLAC and MP3/M4A outputs are supported for both flags.
+
+---
+
 ## [1.1.4] - 2026-03-05
 
 ### 🐛 Fixed

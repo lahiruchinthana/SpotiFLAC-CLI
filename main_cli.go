@@ -44,7 +44,9 @@ var (
 	mp3Bitrate     string
 	embedGenre     bool
 	useSingleGenre bool
-	version        = "1.1.4"
+	// Lyrics options
+	downloadLyrics bool
+	version        = "1.1.5"
 )
 
 var rootCmd = &cobra.Command{
@@ -92,8 +94,9 @@ func init() {
 	rootCmd.Flags().StringVar(&audioFormat, "format", "", "Audio format (alias for quality)")
 	rootCmd.Flags().BoolVar(&allowFallback, "fallback", true, "Allow fallback to lower quality")
 
-	// Metadata options
-	rootCmd.Flags().BoolVarP(&embedLyrics, "embed-lyrics", "l", false, "Embed lyrics in file")
+	// Lyrics options
+	rootCmd.Flags().BoolVarP(&downloadLyrics, "lyrics", "l", false, "Fetch lyrics: embed in file and save as .lrc alongside the audio")
+	rootCmd.Flags().BoolVar(&embedLyrics, "embed-lyrics", false, "Embed lyrics in file only (no .lrc file saved)")
 	rootCmd.Flags().BoolVarP(&embedMaxQualityCover, "max-quality-cover", "c", false, "Embed maximum quality album cover")
 
 	// Batch options
@@ -605,7 +608,14 @@ func downloadTrack(trackData map[string]interface{}) {
 		logSuccess("Downloaded: %s", filePath)
 	}
 
+	// Fetch and embed lyrics into FLAC before any conversion
+	var lyricsLRC string
+	if embedLyrics || downloadLyrics {
+		lyricsLRC = fetchAndEmbedLyrics(spotifyID, trackName, artistName, int(durationMS), actualFilePath)
+	}
+
 	// Convert to requested format if needed
+	finalFilePath := actualFilePath
 	if outputFormat != "flac" {
 		logInfo("\nConverting to %s format...", strings.ToUpper(outputFormat))
 		convertedPath, convertErr := convertToFormat(actualFilePath, outputFormat, mp3Bitrate)
@@ -614,10 +624,21 @@ func downloadTrack(trackData map[string]interface{}) {
 			os.Exit(1)
 		}
 		logSuccess("Converted to: %s", convertedPath)
+		finalFilePath = convertedPath
 
 		// Remove original FLAC file after successful conversion
 		if err := os.Remove(actualFilePath); err != nil {
 			logWarning("Could not remove original FLAC file: %v", err)
+		}
+	}
+
+	// Save .lrc file beside the final audio file
+	if downloadLyrics && lyricsLRC != "" {
+		lrcPath := strings.TrimSuffix(finalFilePath, filepath.Ext(finalFilePath)) + ".lrc"
+		if err := os.WriteFile(lrcPath, []byte(lyricsLRC), 0644); err != nil {
+			logWarning("Failed to save lyrics file: %v", err)
+		} else {
+			logInfo("Lyrics saved to: %s", filepath.Base(lrcPath))
 		}
 	}
 }
@@ -654,6 +675,27 @@ func convertToFormat(inputFile, format, bitrate string) (string, error) {
 	}
 
 	return result.OutputFile, nil
+}
+
+// fetchAndEmbedLyrics fetches lyrics from available sources (Spotify → LRCLIB) and embeds them
+// into the audio file at filePath. Returns the LRC-formatted text for optional .lrc file saving,
+// or empty string if no lyrics were found.
+func fetchAndEmbedLyrics(spotifyID, trackName, artistName string, durationMS int, filePath string) string {
+	logInfo("Fetching lyrics for: %s - %s", artistName, trackName)
+	client := backend.NewLyricsClient()
+	lyricsData, source, err := client.FetchLyricsAllSources(spotifyID, trackName, artistName, durationMS/1000)
+	if err != nil {
+		logWarning("Lyrics not found: %v", err)
+		return ""
+	}
+	logInfo("Lyrics found via %s (%d lines)", source, len(lyricsData.Lines))
+	lyricsText := client.ConvertToLRC(lyricsData, trackName, artistName)
+	if err := backend.EmbedLyricsOnlyUniversal(filePath, lyricsText); err != nil {
+		logWarning("Failed to embed lyrics: %v", err)
+		return lyricsText // Still return so .lrc can be saved
+	}
+	logInfo("Lyrics embedded in: %s", filepath.Base(filePath))
+	return lyricsText
 }
 
 func downloadBatch(trackList []interface{}, contentType string) {
@@ -715,17 +757,35 @@ func downloadBatch(trackList []interface{}, contentType string) {
 				succeeded++
 			}
 
+			// Fetch and embed lyrics into FLAC before any conversion
+			var lyricsLRC string
+			if embedLyrics || downloadLyrics {
+				lyricsLRC = fetchAndEmbedLyrics(spotifyID, trackName, artistName, 0, actualFilePath)
+			}
+
 			// Convert to requested format if needed (works for both new and existing files)
+			finalFilePath := actualFilePath
 			if outputFormat != "flac" && outputFormat != "" {
 				convertedPath, convertErr := convertToFormat(actualFilePath, outputFormat, mp3Bitrate)
 				if convertErr != nil {
 					logWarning("Failed to convert to %s: %v", outputFormat, convertErr)
 				} else {
 					logSuccess("Converted to %s: %s", strings.ToUpper(outputFormat), filepath.Base(convertedPath))
+					finalFilePath = convertedPath
 					// Remove original FLAC file after successful conversion
 					if err := os.Remove(actualFilePath); err != nil {
 						logDebug("Warning: Failed to remove original file: %v", err)
 					}
+				}
+			}
+
+			// Save .lrc file beside the final audio file
+			if downloadLyrics && lyricsLRC != "" {
+				lrcPath := strings.TrimSuffix(finalFilePath, filepath.Ext(finalFilePath)) + ".lrc"
+				if err := os.WriteFile(lrcPath, []byte(lyricsLRC), 0644); err != nil {
+					logWarning("Failed to save lyrics file: %v", err)
+				} else {
+					logDebug("Lyrics saved: %s", filepath.Base(lrcPath))
 				}
 			}
 		}
