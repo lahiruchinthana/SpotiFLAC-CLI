@@ -84,6 +84,9 @@ session.json
 *.rar
 *.7z
 
+# Local upstream source (never push)
+SpotiFLAC-main/
+
 # Temporary files
 tmp/
 temp/
