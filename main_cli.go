@@ -44,7 +44,7 @@ var (
 	mp3Bitrate     string
 	embedGenre     bool
 	useSingleGenre bool
-	version        = "1.1.3"
+	version        = "1.1.4"
 )
 
 var rootCmd = &cobra.Command{
@@ -84,7 +84,7 @@ func init() {
 	// Service options
 	rootCmd.Flags().StringVarP(&service, "service", "s", "auto", "Download service: tidal, qobuz, amazon, deezer, auto")
 	rootCmd.Flags().BoolVarP(&autoDownload, "auto", "a", false, "Auto mode: try multiple services (same as --service auto)")
-	rootCmd.Flags().StringVar(&autoOrder, "auto-order", "tidal-amazon-qobuz", "Service order for auto mode")
+	rootCmd.Flags().StringVar(&autoOrder, "auto-order", "tidal-amazon-qobuz-deezer", "Service order for auto mode")
 	rootCmd.Flags().StringVar(&autoQuality, "auto-quality", "24", "Auto quality: 16 or 24 bit")
 
 	// Quality options
@@ -741,11 +741,15 @@ func downloadBatch(trackList []interface{}, contentType string) {
 }
 
 func downloadWithAutoFallback(spotifyID, isrc, trackName, artistName, albumName, albumArtist, releaseDate, coverURL string, durationMS, trackNumber, discNumber, totalTracks, totalDiscs int, copyright, publisher string) (string, error) {
-	// Get streaming URLs
+	// Get Tidal / Amazon streaming URLs from song.link.
+	// If song.link has no entry for this track (e.g. not on Tidal or Amazon Music),
+	// do NOT abort — proceed with empty URLs so Qobuz (ISRC-based) and Deezer
+	// (Spotify-ID-based) can still be attempted by the services loop below.
 	client := backend.NewSongLinkClient()
 	urls, err := client.GetAllURLsFromSpotify(spotifyID, region)
 	if err != nil {
-		return "", fmt.Errorf("failed to get streaming URLs: %w", err)
+		logDebug("song.link lookup: %v — Tidal/Amazon unavailable, trying remaining services", err)
+		urls = &backend.SongLinkURLs{}
 	}
 
 	// Parse auto order
@@ -810,10 +814,20 @@ func downloadWithAutoFallback(spotifyID, isrc, trackName, artistName, albumName,
 			logDebug("Trying Qobuz...")
 			// Get Deezer ISRC for Qobuz
 			songlinkClient := backend.NewSongLinkClient()
-			deezerURL, err := songlinkClient.GetDeezerURLFromSpotify(spotifyID)
-			if err == nil {
-				deezerISRC, err := backend.GetDeezerISRC(deezerURL)
-				if err == nil && deezerISRC != "" {
+			deezerURL, deezerErr := songlinkClient.GetDeezerURLFromSpotify(spotifyID)
+			if deezerErr != nil {
+				lastErr = fmt.Errorf("qobuz: could not get Deezer URL for ISRC lookup: %w", deezerErr)
+				logDebug("Qobuz failed (no Deezer URL), trying next service...")
+			} else {
+				deezerISRC, isrcErr := backend.GetDeezerISRC(deezerURL)
+				if isrcErr != nil || deezerISRC == "" {
+					if isrcErr != nil {
+						lastErr = fmt.Errorf("qobuz: ISRC lookup failed: %w", isrcErr)
+					} else {
+						lastErr = fmt.Errorf("qobuz: ISRC not found for this track")
+					}
+					logDebug("Qobuz failed (no ISRC), trying next service...")
+				} else {
 					downloader := backend.NewQobuzDownloader()
 					filePath, err := downloader.DownloadByISRC(
 						deezerISRC, outputDir, qobuzQuality, filenameFormat,
@@ -828,9 +842,9 @@ func downloadWithAutoFallback(spotifyID, isrc, trackName, artistName, albumName,
 						return filePath, nil
 					}
 					lastErr = err
+					logDebug("Qobuz failed, trying next service...")
 				}
 			}
-			logDebug("Qobuz failed, trying next service...")
 
 		case "deezer":
 			logDebug("Trying Deezer (via Yoinkify)...")
@@ -855,7 +869,7 @@ func downloadWithAutoFallback(spotifyID, isrc, trackName, artistName, albumName,
 	if lastErr != nil {
 		return "", fmt.Errorf("all services failed: %w", lastErr)
 	}
-	return "", fmt.Errorf("no services available")
+	return "", fmt.Errorf("no configured services could find this track (auto-order: %s)", autoOrder)
 }
 
 func downloadWithService(svc, spotifyID, isrc, trackName, artistName, albumName, albumArtist, releaseDate, coverURL string, trackNumber, discNumber, totalTracks, totalDiscs int, copyright, publisher string) (string, error) {

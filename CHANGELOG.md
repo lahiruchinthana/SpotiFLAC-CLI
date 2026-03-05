@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.4] - 2026-03-05
+
+### 🐛 Fixed
+
+#### Auto Fallback — Don't Abort When song.link Has No Tidal/Amazon Entry
+
+- **`downloadWithAutoFallback`**: previously returned an error immediately if `GetAllURLsFromSpotify` failed (e.g. track not on Tidal or Amazon Music in song.link), causing Qobuz and Deezer to never be attempted. Now proceeds with empty `SongLinkURLs{}` and logs a debug warning, so all remaining services in the auto-order chain are still tried.
+
+#### Qobuz — Always Set `lastErr` on ISRC Lookup Failure
+
+- Qobuz block now properly sets `lastErr` at every failure stage:
+  - Could not get Deezer URL for ISRC lookup
+  - ISRC lookup itself failed
+  - ISRC returned was empty
+  - Previously, ISRC failures were silently swallowed, producing a misleading `"no services available"` error with no root cause.
+
+#### Default `--auto-order` Updated
+
+- Changed default from `tidal-amazon-qobuz` → `tidal-amazon-qobuz-deezer`
+- Deezer is now included as the last-resort fallback for tracks not available on other services (Deezer lookups are Spotify-ID-based and don't depend on song.link).
+
+#### Improved Terminal Error Message
+
+- `"no services available"` → `"no configured services could find this track (auto-order: <value>)"` — now includes the actual service order that was tried.
+
+---
+
 ## [1.1.3] - 2026-02-25
 
 ### ✨ Added - Deezer Service & Full v7.1.0 Backend Sync
