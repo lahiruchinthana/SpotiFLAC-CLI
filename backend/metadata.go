@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	pathfilepath "path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -161,6 +162,30 @@ func extractYear(releaseDate string) string {
 		return releaseDate[:4]
 	}
 	return releaseDate
+}
+
+// lrcTimestampRe matches LRC timestamp prefixes such as [00:26.17] or [00:26.170].
+var lrcTimestampRe = regexp.MustCompile(`\[\d{1,2}:\d{2}\.\d{2,3}\]`)
+
+// lrcMetaTagRe matches LRC header metadata lines such as [ti:Title], [ar:Artist], [by:SpotiFlac].
+var lrcMetaTagRe = regexp.MustCompile(`^\[(?:ti|ar|al|by|offset|length|re|ve|au|lr|sr):[^\]]*\]$`)
+
+// stripLRCFormatting converts LRC-formatted lyrics to plain text for use in ID3 USLT tags.
+// Players like PotPlayer expect plain text in USLT; timestamped lyrics belong in external .lrc files.
+func stripLRCFormatting(lrc string) string {
+	var lines []string
+	for _, line := range strings.Split(lrc, "\n") {
+		line = strings.TrimSpace(line)
+		if lrcMetaTagRe.MatchString(line) {
+			continue
+		}
+		stripped := lrcTimestampRe.ReplaceAllString(line, "")
+		stripped = strings.TrimSpace(stripped)
+		if stripped != "" {
+			lines = append(lines, stripped)
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func EmbedLyricsOnly(filepath string, lyrics string) error {
@@ -438,11 +463,14 @@ func EmbedLyricsOnlyMP3(filepath string, lyrics string) error {
 
 	tag.DeleteFrames(tag.CommonID("Unsynchronised lyrics/text transcription"))
 
+	// USLT expects plain text; strip LRC timestamps so players like PotPlayer display it correctly
+	plainLyrics := stripLRCFormatting(lyrics)
+
 	usltFrame := id3v2.UnsynchronisedLyricsFrame{
 		Encoding:          id3v2.EncodingUTF8,
 		Language:          "eng",
 		ContentDescriptor: "",
-		Lyrics:            lyrics,
+		Lyrics:            plainLyrics,
 	}
 	tag.AddUnsynchronisedLyricsFrame(usltFrame)
 
